@@ -24,6 +24,8 @@ IF !SYS(16) $ SET("Procedure")
 	SET PROCEDURE TO (SYS(16)) ADDITIVE
 ENDIF
 
+#INCLUDE "icalendar.h"
+
 #DEFINE	SAFETHIS		ASSERT !USED("This") AND TYPE("This") == "O"
 
 * serialization constants
@@ -680,7 +682,7 @@ DEFINE CLASS _iCalValueHandler AS _iCalElement
 	Value_IsComposite = .NULL.
 
 	* initialize to default and intantiation values, and configuration
-	FUNCTION Init (InitialValue AS AnyType)
+	FUNCTION Init (InitialValue AS AnyType, Flags AS Integer)
 
 		SAFETHIS
 
@@ -701,11 +703,11 @@ DEFINE CLASS _iCalValueHandler AS _iCalElement
 			This.HValue.Value.IsComposite = This.Value_IsComposite
 		ENDIF
 
-		IF PCOUNT() = 1
-			This.SetValue(m.InitialValue)
+		IF PCOUNT() != 0
+			This.SetValue(m.InitialValue, EVL(m.Flags, 0))
 		ELSE
 			IF !ISNULL(This.DefaultValue)
-				This.SetValue(This.DefaultValue)
+				This.SetValue(This.DefaultValue, 0)
 			ENDIF
 		ENDIF
 
@@ -742,11 +744,11 @@ DEFINE CLASS _iCalValueHandler AS _iCalElement
 	ENDFUNC
 
 	* set a value
-	FUNCTION SetValue (NewValue AS AnyType)
+	FUNCTION SetValue (NewValue AS AnyType, Flags AS Integer)
 
 		SAFETHIS
 
-		ASSERT PCOUNT() = 1
+		ASSERT INLIST(PCOUNT(), 1, 2)
 
 		LOCAL ARRAY EnumerationTokens(1)
 		LOCAL Accept AS Logical
@@ -755,6 +757,10 @@ DEFINE CLASS _iCalValueHandler AS _iCalElement
 
 		m.Accept = .F.
 
+		IF PCOUNT() = 1
+			m.Flags = 0
+		ENDIF
+
 		m.Levels = ASTACKINFO(m.ExeStack)
 		* if the value is read-only, accept only from the object init; in any other case, receive the value
 		IF !This.ReadOnly OR (m.Levels > 1 AND m.ExeStack(m.Levels - 1, 3) == LOWER(This.Class) + ".init")
@@ -762,12 +768,12 @@ DEFINE CLASS _iCalValueHandler AS _iCalElement
 			IF This.HValue.Value.DataType == "TEXT" AND !EMPTY(This.Enumeration) AND ALINES(m.EnumerationTokens, This.Enumeration, 1, ",") > 0
 
 				IF ASCAN(m.EnumerationTokens, m.NewValue, -1, -1, 1, 1 + 2 + 4) != 0 OR (This.Extensions AND UPPER(LEFT(m.NewValue, 2)) == "X-")
-					This.HValue.SetValue(m.NewValue)
+					This.HValue.SetValue(m.NewValue, m.Flags)
 					m.Accept = .T.
 				ENDIF
 
 			ELSE
-				This.HValue.SetValue(m.NewValue)
+				This.HValue.SetValue(m.NewValue, m.Flags)
 				m.Accept = .T.
 			ENDIF
 
@@ -816,15 +822,18 @@ DEFINE CLASS _iCalValue AS _iCalBase
 	ENDFUNC
 
 	* set the value
-	PROCEDURE SetValue (NewValue AS AnyType)
+	PROCEDURE SetValue (NewValue AS AnyType, Flags AS Integer)
 
 		SAFETHIS
 
-		ASSERT PCOUNT() = 1
+		ASSERT INLIST(PCOUNT(), 1, 2)
 
 		LOCAL DataValue AS AnyType
 
 		This.Value.Data = .NULL.
+		IF PCOUNT() = 1
+			m.Flags = 0
+		ENDIF
 
 		* for structured values, instantiate the objects if the value passed as a serialized version
 		DO CASE
@@ -848,6 +857,13 @@ DEFINE CLASS _iCalValue AS _iCalBase
 			This.Value.Data = m.DataValue
 		ENDIF
 
+		DO CASE
+		CASE BITAND(m.Flags, ICAL_DATE_IS_UTC) != 0
+			This.Value.IsUTC = .T.
+		CASE BITAND(m.Flags, ICAL_DATE_IS_NOT_UTC) != 0
+			This.Value.IsUTC = .F.
+		ENDCASE
+ 
 		m.DataValue = .NULL.
 
 	ENDPROC
@@ -1310,7 +1326,7 @@ DEFINE CLASS _iCalElement AS _iCalBase
 		RETURN 0
 	ENDFUNC
 
-	FUNCTION SetValue (NewValue AS AnyType)
+	FUNCTION SetValue (NewValue AS AnyType, Flags AS Integer)
 	ENDFUNC
 
 	FUNCTION UnsetValue (KeepDataType AS Logical)
