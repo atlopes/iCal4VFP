@@ -41,6 +41,7 @@ Values are also treated as objects, with specific methods to Set and Get them.
 The ICSProcessor class is intended to process an iCalendar formatted source: an `.ics` file, or a iCalendar formatted string.
 
 #### Methods
+
 | Name  | Type  | Obs |
 | ------------ | ------------ | ------------ |
 | Read  | O  | Reads an iCalendar formatted string, and returns an `iCalendar` object  |
@@ -61,6 +62,35 @@ In iCalendar, components are container objects that integrate properties and, ev
 	iCalCompSTANDARD
 	iCalCompDAYLIGHT
 
+#### Methods (common)
+
+| Name  | Type  | Obs |
+| ------------ | ------------ | ------------ |
+| Parse  | L | Parses a formatted segment of an iCalendar formatted element, a line at a time |
+| Serialize | C | Produces an iCalendar formatted object |
+| AddICComponent | O | Adds an `_iCalComponent` based object |
+| GeICComponent | O | Returns a previously added `_iCalComponent` based object |
+| GeICComponentsCount | N | Returns the number of previously added `_iCalComponent` based objects |
+| AddICProperty | O | Adds an `_iCalProperty` based object |
+| GeICProperty | O | Returns a previously added `_iCalProperty` based object |
+| GeICPropertiesCount | N | Returns the number of previously added `_iCalProperty` based objects |
+| GeICPropertyValue | * | Returns the value of a previously added `_iCalProperty` based object |
+
+
+#### Methods (iCalendar)
+
+| Name  | Type  | Obs |
+| ------------ | ------------ | ------------ |
+| GetTimezone  | O | Returns the VTIMEZONE object that corresponds to a TZID |
+
+#### Methods ( iCalCompVTIMEZONE)
+
+| Name  | Type  | Obs |
+| ------------ | ------------ | ------------ |
+| NextSavingTimeChange | T | Returns the next time in which a saving time change will occur, for a given date |
+| SavingTime | N | Returns the saving time (in seconds) for a given date |
+| ToLocalTime | T | Returns the local time corresponding to a given UTC time |
+| ToUTC | T | Returns the UTC time corresponding to a given local time |
 
 ### Properties classes
 
