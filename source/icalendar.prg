@@ -1224,7 +1224,7 @@ DEFINE CLASS _iCalValue AS _iCalBase
 			RETURN CHRTRAN(m.Serialized, '"', "")
 
 		CASE This.Value.DataType == "UTC-OFFSET"
-			RETURN VAL(LEFT(m.Serialized, 3)) * 60 + VAL(SUBSTR(m.Serialized, 4, 2)) + IIF(LEN(m.Serialized) = 7, VAL(SUBSTR(m.Serialized, 6, 2) / 60), 0)
+			RETURN VAL(LEFT(m.Serialized, 3)) * 60 + VAL(SUBSTR(m.Serialized, 4, 2)) + IIF(LEN(m.Serialized) = 7, VAL(SUBSTR(m.Serialized, 6, 2)) / 60, 0)
 
 		OTHERWISE
 			RETURN This.Value.Parse(m.Serialized, m.Level)
@@ -1365,12 +1365,13 @@ DEFINE CLASS _iCalElement AS _iCalBase
 	ENDFUNC
 
 	* get an iCalendar object from an arrayed list of sub-elements (parameters in a property, properties in a component, ...),
-	*  indexed by name, position, or name/position
-	FUNCTION _GetIC (Id AS StringOrInteger, SubIndex AS Integer, SubArray AS Array, SubCount AS Integer) AS _iCalBase
+	*  indexed by name, position, or name/position, or a full collection of objects (when SubIndex = -1)
+	FUNCTION _GetIC (Id AS StringOrInteger, SubIndex AS Integer, SubArray AS Array, SubCount AS Integer) AS _iCalBaseOrCollection
 
 		LOCAL LoopIndex AS Integer
 		LOCAL ICNameIndex AS Integer
 		LOCAL UICName AS String
+		LOCAL ICObjects AS Collection
 
 		IF VARTYPE(m.Id) == "N"
 			RETURN IIF(BETWEEN(m.Id, 1, m.SubCount), m.SubArray(m.Id), .NULL.)
@@ -1379,16 +1380,35 @@ DEFINE CLASS _iCalElement AS _iCalBase
 		m.ICNameIndex = 1
 		m.UICName = UPPER(m.Id)
 
+		* a collection of named objects was requested
+		IF m.SubIndex = -1
+			m.ICObjects = CREATEOBJECT("Collection")
+		ELSE
+			m.ICObjects = .NULL.
+		ENDIF
+
+		* inspect all objects
 		FOR m.LoopIndex = 1 TO m.SubCount
+			* found an used slot in the array of the named elements?
 			IF !ISNULL(m.SubArray(m.LoopIndex)) AND m.SubArray(m.LoopIndex).ICName == m.UICName
-				IF m.ICNameIndex = m.SubIndex
-					RETURN m.SubArray(m.LoopIndex)
+				* if the full collection was not requested
+				IF ISNULL(m.ICObjects)
+					* and we are at the requested index 
+					IF m.ICNameIndex = m.SubIndex
+						* we may return
+						RETURN m.SubArray(m.LoopIndex)
+					ENDIF
+				ELSE
+					* otherwise, add to the collection of named objects
+					m.ICObjects.Add(m.SubArray(m.LoopIndex))
 				ENDIF
 				m.ICNameIndex = m.ICNameIndex + 1
 			ENDIF
 		ENDFOR
 
-		RETURN .NULL.
+		* it will be either a full collection or .NULL.
+		RETURN m.ICObjects
+
 	ENDFUNC
 
 	* return the number of iCalendar objects in an arrayed list of sub-elements,

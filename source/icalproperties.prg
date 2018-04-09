@@ -495,7 +495,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 	ENDFUNC
 
 	* the RRULE processor
-	HIDDEN FUNCTION Calculator (Start AS Datetime, Finish AS Datetime, TZ AS iCalCompVTIMEZONE, AddDates AS iCalPropRDATE, Exceptions AS iCalPropEXDATE, CalcNext AS Logical) AS String
+	HIDDEN FUNCTION Calculator (Start AS Datetime, Finish AS Datetime, TZ AS iCalCompVTIMEZONE, AddDates AS Collection, ExceptDates AS Collection, CalcNext AS Logical) AS String
 
 		SAFETHIS
 
@@ -522,6 +522,8 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 		LOCAL StepIndex AS Integer
 		LOCAL NextInterval AS Logical
 		LOCAL LoopIndex AS Integer
+		LOCAL AddDate AS iCalPropRDATE
+		LOCAL ExceptDate AS iCalPropEXDATE
 		LOCAL REXDValue
 
 		* get the rule definitions in a comfortable manner
@@ -708,22 +710,26 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 
 		* add the RDATEs, if any
 		IF !ISNULL(m.AddDates)
-			FOR m.LoopIndex = 1 TO m.AddDates.GetValueCount()
-				m.REXDValue = m.AddDates.GetValue(m.LoopIndex)
-				IF VARTYPE(m.REXDValue) == "O"
-					m.REXDValue = m.RDValue.DateStart
-				ENDIF
-				LOCATE FOR LocalTime = m.REXDValue
-				IF !FOUND()
-					INSERT INTO (m.ReCursor) VALUES (m.REXDValue, .NULL.)
-				ENDIF
+			FOR EACH m.AddDate IN m.AddDates
+				FOR m.LoopIndex = 1 TO m.AddDate.GetValueCount()
+					m.REXDValue = m.AddDate.GetValue(m.LoopIndex)
+					IF VARTYPE(m.REXDValue) == "O"
+						m.REXDValue = m.REXDValue.DateStart
+					ENDIF
+					LOCATE FOR LocalTime = m.REXDValue
+					IF !FOUND()
+						INSERT INTO (m.ReCursor) VALUES (m.REXDValue, .NULL.)
+					ENDIF
+				ENDFOR
 			ENDFOR
 		ENDIF
 		* exclude the EXDATEs, if any
-		IF !ISNULL(m.Exceptions)
-			FOR m.LoopIndex = 1 TO m.Exceptions.GetValueCount()
-				m.REXDValue = m.Exceptions.GetValue(m.LoopIndex)
-				DELETE FROM (m.ReCursor) WHERE LocalTime = m.REXDValue
+		IF !ISNULL(m.ExceptDates)
+			FOR EACH m.ExceptDate IN m.ExceptDates
+				FOR m.LoopIndex = 1 TO m.ExceptDate.GetValueCount()
+					m.REXDValue = m.ExceptDate.GetValue(m.LoopIndex)
+					DELETE FROM (m.ReCursor) WHERE LocalTime = m.REXDValue
+				ENDFOR
 			ENDFOR
 			SELECT * FROM (m.ReCursor) WHERE !DELETED() INTO CURSOR (m.ReCursor) READWRITE
 			INDEX ON LocalTime TAG LocalTime

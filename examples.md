@@ -32,7 +32,7 @@ END:VEVENT
 END:VCALENDAR
 ```
 
-Note how property are instantiated with their own values. In case of dates, since all are UTC dates, a flag is passed to the value setting to signal the case.
+Note how properties are instantiated with their own values. In case of dates, since they all are UTC dates in the example, a flag is passed to the value setting to signal the case.
 
 ```foxpro
 m.TstEvent.AddICproperty(CREATEOBJECT("iCalPropDTSTAMP", {^1996-07-04 12:00:00}, ICAL_DATE_IS_UTC))
@@ -42,13 +42,13 @@ m.TstEvent.AddICproperty(CREATEOBJECT("iCalPropDTSTAMP", {^1996-07-04 12:00:00},
 
 ### Read an iCalendar formatted object
 
-Reads an iCalendar formatted string. The full object is parsed and instantiated as an `iCalendar` VFP object which, in turn, is serialized back as an iCalendar object.
+Reads an iCalendar formatted string. The full object is parsed and instantiated as an `iCalendar` VFP object which, in turn, is serialized back as an iCalendar document.
 
 [Source](examples/read-iCalendar-from-memory.prg "Source")
 
 ### Import an .ics file into a VFP cursor
 
-Reads an .ics file and import a simplified version of its events into a VFP Cursor. Use an .ics file in your computer to run the example. The debugger is activated to facilitate the inspection of the generated `iCalendar` object.
+Reads an .ics file and imports a simplified version of its events into a VFP Cursor. Use an .ics file in your computer to run the example. The debugger is activated to facilitate the inspection of the generated `iCalendar` object.
 
 Note that the cursor could be created directly from the .ics source file, by calling `ICSToCursor()` with a filename as the first argument.
 

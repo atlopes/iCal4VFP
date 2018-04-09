@@ -12,9 +12,13 @@ ENDIF
 
 DEFINE CLASS ICSProcessor AS Custom
 
+	ErrorCondition = .NULL.
+
 	_MemberData =	"<VFPData>" + ;
+						'<memberdata name="errorcondition" type="method" display="ErrorCondition"/>' + ;
 						'<memberdata name="readfile" type="method" display="ReadFile"/>' + ;
-						'<memberdata name="readtext" type="method" display="ReadText"/>' + ;
+						'<memberdata name="read" type="method" display="Read"/>' + ;
+						'<memberdata name="readurl" type="method" display="ReadURL"/>' + ;
 						'<memberdata name="icstocursor" type="method" display="ICSToCursor"/>' + ;
 						"</VFPData>"
 
@@ -27,6 +31,7 @@ DEFINE CLASS ICSProcessor AS Custom
 		LOCAL Result AS iCalendar
 		LOCAL ICSLine AS String
 		LOCAL Assembled AS String
+		LOCAL Ops AS Exception
 
 		m.Result = .NULL.
 
@@ -79,7 +84,13 @@ DEFINE CLASS ICSProcessor AS Custom
 				m.Result.Parse(m.Assembled)
 				* if everything was ok, m.Result will hold an iCalendar object
 			ENDIF
-		CATCH
+
+			This.ErrorCondition = .NULL.
+
+		CATCH TO m.Ops
+
+			This.ErrorCondition = m.Ops
+
 			* something went wrong, so signal it
 			m.Result = .NULL.
 
@@ -94,12 +105,47 @@ DEFINE CLASS ICSProcessor AS Custom
 
 	ENDFUNC
 
+	* read an ICS from a URL
+	FUNCTION ReadURL (URL AS String) AS iCalendar
+
+		ASSERT VARTYPE(m.ICSFile) == "C"
+
+		LOCAL Result AS iCalendar
+		LOCAL ICSResource AS String
+		LOCAL Ops AS Exception
+		LOCAL HTTP AS WinHttp.WinHttpRequest
+
+		TRY
+			m.HTTP = CREATEOBJECT("WinHttp.WinHttpRequest.5.1")
+
+			m.HTTP.Open("Get", m.URL, .F.)
+			m.HTTP.Send()
+
+			* just get the response from the server
+			m.ICSResource = "" + m.HTTP.Responsebody
+
+			m.HTTP = .NULL.
+	
+			* and continue to read from memory
+			m.Result = This.Read(m.ICSResource)
+	
+		CATCH TO m.Ops
+
+			m.Result = .NULL.
+
+		ENDTRY
+
+		RETURN m.Result
+
+	ENDFUNC
+
 	* read an ICS from memory
 	FUNCTION Read (ICSText AS String) AS iCalendar
 
 		ASSERT VARTYPE(m.ICSText) == "C"
 
 		LOCAL Result AS iCalendar
+		LOCAL Ops AS Exception
 		LOCAL ARRAY ICSLines(1)
 		LOCAL ICSLine AS String
 		LOCAL Assembled AS String
@@ -145,7 +191,9 @@ DEFINE CLASS ICSProcessor AS Custom
 			m.Result.Parse(m.Assembled)
 			* if everything was ok, m.Result will have an iCalendar object
 
-		CATCH
+		CATCH TO m.Ops
+
+			This.ErrorCondition = m.Ops
 			* something went wrong, so signal it
 			m.Result = .NULL.
 
@@ -198,6 +246,7 @@ DEFINE CLASS ICSProcessor AS Custom
 		LOCAL EventIndex AS Integer
 		LOCAL ICComponent AS _iCalComponent
 		LOCAL ICProperty AS _iCalProperty
+		LOCAL ICValue AS _iCalValue
 		LOCAL ICParameter AS _iCalParameter
 		LOCAL ObjBuffer AS Object
 
@@ -207,6 +256,7 @@ DEFINE CLASS ICSProcessor AS Custom
 				Timezone Varchar(100), ;
 				Start Datetime, ;
 				End Datetime, ;
+				AllDay Logical, ;
 				Organizer Varchar(200), ;
 				OrganizerName Varchar(100), ;
 				Attendee Varchar(200), ;
@@ -227,7 +277,25 @@ DEFINE CLASS ICSProcessor AS Custom
 			m.ObjBuffer.IdEvent = NVL(m.ICComponent.GetICPropertyValue("UID"), "Undefined")
 			m.ObjBuffer.Summary = NVL(m.ICComponent.GetICPropertyValue("SUMMARY"), "")
 			m.ObjBuffer.Start = NVL(m.ICComponent.GetICPropertyValue("DTSTART"), {})
-			m.ObjBuffer.End = NVL(m.ICComponent.GetICPropertyValue("DTEND"), {})
+			m.ICProperty = m.ICComponent.GetICProperty("DURATION")
+			IF !ISNULL(m.ICProperty) AND !EMPTY(m.ObjBuffer.Start)
+				m.ICValue = m.ICProperty.GetValue()
+				IF TYPE("m.ObjBuffer.Start") == "T"
+					m.ObjBuffer.End = m.ObjBuffer.Start + m.ICValue.Calculate()
+				ELSE
+					m.ObjBuffer.End = m.ObjBuffer.Start + m.ICValue.Calculate() / 864000
+				ENDIF
+			ELSE
+				m.ObjBuffer.End = NVL(m.ICComponent.GetICPropertyValue("DTEND"), {})
+			ENDIF
+			IF TYPE("m.ObjBuffer.Start") == "D"
+				m.ObjBuffer.AllDay =  (m.ObjBuffer.End - m.ObjBuffer.Start = 1)
+			ELSE
+				m.ObjBuffer.AllDay = (m.ObjBuffer.Start = TTOD(m.ObjBuffer.Start)) AND (m.ObjBuffer.End - m.ObjBuffer.Start = 86400)
+			ENDIF
+			IF m.ObjBuffer.AllDay
+				m.ObjBuffer.End = {}
+			ENDIF
 			m.ICProperty = m.ICComponent.GetICProperty("ORGANIZER")
 			IF !ISNULL(m.ICProperty)
 				m.ObjBuffer.Organizer = NVL(m.ICProperty.GetValue(), "")
@@ -283,7 +351,17 @@ DEFINE CLASS ICSProcessor AS Custom
 			m.ObjBuffer.IdTodo = NVL(m.ICComponent.GetICPropertyValue("UID"), "Undefined")
 			m.ObjBuffer.Summary = NVL(m.ICComponent.GetICPropertyValue("SUMMARY"), "")
 			m.ObjBuffer.Start = NVL(m.ICComponent.GetICPropertyValue("DTSTART"), {})
-			m.ObjBuffer.Due = NVL(m.ICComponent.GetICPropertyValue("DUE"), {})
+			m.ICProperty = m.ICComponent.GetICProperty("DURATION")
+			IF !ISNULL(m.ICProperty) AND !EMPTY(m.ObjBuffer.Start)
+				m.ICValue = m.ICProperty.GetValue()
+				IF TYPE("m.ObjBuffer.Start") == "T"
+					m.ObjBuffer.Due = m.ObjBuffer.Start + m.ICValue.Calculate()
+				ELSE
+					m.ObjBuffer.Due = m.ObjBuffer.Start + m.ICValue.Calculate() / 864000
+				ENDIF
+			ELSE
+				m.ObjBuffer.End = NVL(m.ICComponent.GetICPropertyValue("DUE"), {})
+			ENDIF
 			m.ICProperty = m.ICComponent.GetICProperty("ORGANIZER")
 			IF !ISNULL(m.ICProperty)
 				m.ObjBuffer.Organizer = NVL(m.ICProperty.GetValue(), "")

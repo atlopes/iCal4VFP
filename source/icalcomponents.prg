@@ -247,7 +247,7 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 						m.UntilDate = m.VRule.Until
 						* but if it didn't calculate the previous and next ST enforcement
 						IF ISNULL(m.UntilDate) OR YEAR(m.UntilDate) > YEAR(m.RefTime)
-							m.RRule.CalculatePeriod(m.RefDate, m.RefTime, .NULL., m.TzComp.GetICProperty("RDATE"), m.TzComp.GetICProperty("EXDATE"))
+							m.RRule.CalculatePeriod(m.RefDate, m.RefTime, .NULL., m.TzComp.GetICProperty("RDATE", -1), m.TzComp.GetICProperty("EXDATE", -1))
 							IF !ISNULL(m.RRule.PreviousDate)
 								m.RefDate = m.RRule.PreviousDate
 								m.Period = .T.
@@ -257,6 +257,9 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 						ELSE
 							m.RefDate = .NULL.
 						ENDIF
+					* no RRULE? look for RDATEs
+					ELSE
+						m.RefDate = This.GetClosestRDATE(m.RefTime, m.RefDate, m.TzComp.GetICProperty("RDATE", -1))
 					ENDIF
 
 					* we have a date, and it covers our time, and it's the closest to our time that we found so far?
@@ -265,9 +268,11 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 						m.OffsetTo = m.TzComp.GetICPropertyValue("TZOFFSETTO")
 						This.TzName = NVL(m.TzComp.GetICPropertyValue("TZNAME"), "")
 						* store the results of our calculation for the next calls
-						This.BiasST = m.OffsetTo
-						This.StartST = m.RefDate
-						IF ISNULL(m.Period)
+						IF m.Period
+							This.BiasST = m.OffsetTo
+							This.StartST = m.RefDate
+						ELSE
+							This.StartST = .NULL.
 							This.EndST = .NULL.
 							This.BiasST = 0
 						ENDIF
@@ -314,6 +319,7 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 		LOCAL CompIndex AS Integer
 		LOCAL RRule AS iCalPropRRULE
 		LOCAL VRule AS iCalTypeRECUR
+		LOCAL RDates AS Collection
 		LOCAL Period AS Logical
 
 		* no ST change in the future
@@ -357,7 +363,7 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 							m.UntilDate = m.VRule.Until
 							* but if it didn't, calculate the previous and next ST enforcement
 							IF ISNULL(m.UntilDate) OR YEAR(m.UntilDate) >= YEAR(m.RefTime)
-								m.RRule.CalculatePeriod(m.RefDate, m.RefTime, .NULL., m.TzComp.GetICProperty("RDATE"), m.TzComp.GetICProperty("EXDATE"))
+								m.RRule.CalculatePeriod(m.RefDate, m.RefTime, .NULL., m.TzComp.GetICProperty("RDATE", -1), m.TzComp.GetICProperty("EXDATE", -1))
 								IF !ISNULL(m.RRule.PreviousDate)
 									m.RefDate = m.RRule.PreviousDate
 									m.TzComp.LastChained = m.RRule.NextDate
@@ -369,9 +375,19 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 							ELSE
 								m.RefDate = .NULL.
 							ENDIF
+						* no RRULE? look for RDATEs
+						ELSE
+							m.RDates = This.GetSurroundingRDATEs(m.RefTime, m.RefDate, m.TzComp.GetICProperty("RDATE", -1))
+							IF !ISNULL(m.RDates)
+								m.RefDate = m.RDates(1)
+								m.CalcNext = m.RDates(2)
+								m.TzComp.LastChained = m.CalcNext
+								m.Period = .T.
+								m.RDates = .NULL.
+							ENDIF
 						ENDIF
 					ELSE
-						m.Period = .T.		&& a period was calculated perviously in the chain
+						m.Period = .T.		&& a period was calculated previously in the chain
 					ENDIF
 				ENDIF
 
@@ -395,6 +411,95 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 
 		* done, we found the nearest next saving time change
  		RETURN m.NextDate
+
+	ENDFUNC
+
+	* get the closest date from a list of RDATE
+	HIDDEN FUNCTION GetClosestRDATE (RefTime AS Datetime, Start AS Datetime, RDates AS Collection) AS Datetime
+
+		LOCAL RDate AS iCalPropRDATE
+		LOCAL RDValue
+		LOCAL RDatetime AS Datetime
+		LOCAL RDClosest AS Datetime
+		LOCAL LoopIndex AS Integer
+
+		m.RDClosest = m.Start
+
+		* if there is a list
+		IF !ISNULL(m.RDates)
+			* in each entry,
+			FOR EACH m.RDate IN m.RDates
+				*  get all date values
+				FOR m.LoopIndex = 1 TO m.RDate.GetValueCount()
+					* in case it's a duration, get the date part
+					m.RDValue = m.RDate.GetValue(m.LoopIndex)
+					IF VARTYPE(m.RDValue) == "O"
+						m.RDatetime = m.RDValue.Datestart
+					ELSE
+						m.RDatetime = m.RDValue
+					ENDIF
+					* if it gets closer to the referred time, set it
+					IF m.RDatetime > m.Start AND m.RDatetime < m.RefTime AND m.RDatetime > NVL(m.RDClosest, {})
+						m.RDClosest = m.RDatetime
+					ENDIF
+				ENDFOR
+			ENDFOR
+		ENDIF
+
+		* the closest in the list
+		RETURN m.RDClosest
+
+	ENDFUNC
+
+	* get surrounding RDATE
+	HIDDEN FUNCTION GetSurroundingRDATEs (RefTime AS Datetime, Start AS Datetime, RDates AS Collection) AS Collection
+
+		LOCAL RDate AS iCalPropRDATE
+		LOCAL RDValue
+		LOCAL RDatetime AS Datetime
+		LOCAL RDClosestPrevious AS Datetime
+		LOCAL RDClosestNext AS Datetime
+		LOCAL LoopIndex AS Integer
+		LOCAL Result AS Collection
+
+		m.RDClosestPrevious = m.Start
+		m.RDClosestNext = .NULL.
+
+		* if there is a list
+		IF !ISNULL(m.RDates)
+			* in each entry,
+			FOR EACH m.RDate IN m.RDates
+				*  get all date values
+				FOR m.LoopIndex = 1 TO m.RDate.GetValueCount()
+					* in case it's a duration, get the date part
+					m.RDValue = m.RDate.GetValue(m.LoopIndex)
+					IF VARTYPE(m.RDValue) == "O"
+						m.RDatetime = m.RDValue.Datestart
+					ELSE
+						m.RDatetime = m.RDValue
+					ENDIF
+					* if it gets closer to the referred time below, set it
+					IF m.RDatetime > m.Start AND m.RDatetime < m.RefTime AND m.RDatetime > m.RDClosestPrevious
+						m.RDClosestPrevious = m.RDatetime
+					ENDIF
+					* now, the same check for a time above
+					IF m.RDatetime > m.Start AND m.RDatetime >= m.RefTime AND m.RDatetime <= NVL(m.RDClosestNext, m.RDatetime)
+						m.RDClosestNext = m.RDatetime
+					ENDIF
+				ENDFOR
+			ENDFOR
+		ENDIF
+
+		IF !ISNULL(m.RDClosestNext)
+			m.Result = CREATEOBJECT("Collection")
+			m.Result.Add(m.RDClosestPrevious)
+			m.Result.Add(m.RDClosestNext)
+		ELSE
+			m.Result = .NULL.
+		ENDIF
+
+		* the closest range in the list
+		RETURN m.Result
 
 	ENDFUNC
 

@@ -12,6 +12,8 @@ Values can be assigned to parameters and properties; parameters can be added to 
 
 Values are also treated as objects, with specific methods to Set and Get them.
 
+iCal4VFP class stack:
+
 ![iCal4VFP class stack](class-stack.png "iCal4VFP class stack")
 
 ### Base classes
@@ -39,6 +41,7 @@ The ICSProcessor class is intended to process an iCalendar formatted source: an 
 | ------------ | ------------ | ------------ |
 | Read  | O  | Reads an iCalendar formatted string, and returns an `iCalendar` object  |
 | ReadFile  | O  | Reads an `.ics` file, and returns an `iCalendar` object |
+| ReadURL  | O  | Reads an `.ics` web resource, and returns an `iCalendar` object |
 | ICSToCursor | N | Creates a simplified flat cursor over some iCalendar source (an `iCalendar` object, an `.ics` file, or a formatted string) |
 
 ### Components classes
