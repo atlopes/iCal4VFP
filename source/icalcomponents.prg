@@ -50,21 +50,32 @@ DEFINE CLASS iCalendar AS _iCalComponent
 	* get a timezone defined in the iCalendar core object
 	FUNCTION GetTimezone (TzID AS String)
 
-		ASSERT VARTYPE(m.TzID) == "C"
+		ASSERT PCOUNT() = 0 OR VARTYPE(m.TzID) == "C"
 
 		LOCAL TzCount AS Integer
 		LOCAL TzIndex AS Integer
 		LOCAL Timezone AS iCalCompVTIMEZONE
 
-		FOR m.TzIndex = 1 TO This.GetICComponentsCount("VTIMEZONE")
+		* get the first (= usually, the only one)
+		IF PCOUNT() = 0
 
-			m.Timezone = This.GetICComponent("VTIMEZONE", m.TzIndex)
-			IF m.Timezone.GetICPropertyValue("TZID") == m.TzID
-				RETURN m.Timezone
-			ENDIF
-			m.Timezone = .NULL.
-		ENDFOR
+			RETURN This.GetICComponent("VTIMEZONE")
 
+		ELSE
+
+			* or look for a specific TZID
+			FOR m.TzIndex = 1 TO This.GetICComponentsCount("VTIMEZONE")
+
+				m.Timezone = This.GetICComponent("VTIMEZONE", m.TzIndex)
+				IF m.Timezone.GetICPropertyValue("TZID") == m.TzID
+					RETURN m.Timezone
+				ENDIF
+				m.Timezone = .NULL.
+			ENDFOR
+
+		ENDIF
+
+		* none found...
 		RETURN .NULL.
 
 	ENDFUNC

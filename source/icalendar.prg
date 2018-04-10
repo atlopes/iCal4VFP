@@ -951,7 +951,8 @@ DEFINE CLASS _iCalValue AS _iCalBase
 
 		LOCAL IsParameter AS Logical
 		LOCAL IsProperty AS Logical
-		LOCAL Encoded AS String
+		LOCAL Serialized AS String
+		LOCAL Processed AS AnyType
 
 		STORE .F. TO m.IsParameter, m.IsProperty
 
@@ -999,19 +1000,19 @@ DEFINE CLASS _iCalValue AS _iCalBase
 
 		CASE This.Value.DataType == "TEXT"
 			IF m.IsProperty
-				m.Encoded = STRTRAN(STRTRAN(STRTRAN(STRTRAN(STRTRAN(STRTRAN(m.Value, "\", "\\"), ";", "\;"), ",", "\,"), CRLF, "\n"), CHR(13), "\n"), CHR(10), "\n")
+				m.Serialized = STRTRAN(STRTRAN(STRTRAN(STRTRAN(STRTRAN(STRTRAN(m.Value, "\", "\\"), ";", "\;"), ",", "\,"), CRLF, "\n"), CHR(13), "\n"), CHR(10), "\n")
 			ELSE
-				m.Encoded = m.Value
+				m.Serialized = m.Value
 				IF m.IsParameter
 					IF RFC6868
-						m.Encoded = STRTRAN(STRTRAN(m.Encoded, "^", "^^"), '"', "^'")
+						m.Serialized = STRTRAN(STRTRAN(m.Serialized, "^", "^^"), '"', "^'")
 					ENDIF
-					IF !(m.Encoded == CHRTRAN(m.Encoded, " ;:,", ""))
-						m.Encoded = '"' + m.Encoded + '"'
+					IF !(m.Serialized == CHRTRAN(m.Serialized, " ;:,", ""))
+						m.Serialized = '"' + m.Serialized + '"'
 					ENDIF
 				ENDIF
 			ENDIF
-			RETURN m.Encoded
+			RETURN m.Serialized
 
 		CASE This.Value.DataType == "TIME"
 			* special case: time uses the time portion in a Datetime value
@@ -1025,9 +1026,15 @@ DEFINE CLASS _iCalValue AS _iCalBase
 			ENDIF
 
 		CASE This.Value.DataType == "UTC-OFFSET"
-			RETURN IIF(m.Value >= 0, "+", "-") + TRANSFORM(INT(INT(m.Value) / 60), "@L 99") + TRANSFORM(INT(INT(m.Value) % 60), "@L 99") + ;
-						IIF(m.Value = INT(m.Value), "", TRANSFORM(INT((m.Value - INT(m.Value)) * 60), "@L 99"))
-		
+			m.Serialized = IIF(m.Value >= 0, "+", "-")
+			m.Processed = ABS(m.Value)
+			m.Serialized = m.Serialized + TRANSFORM(INT(INT(m.Processed) / 60), "@L 99") + TRANSFORM(INT(INT(m.Processed) % 60), "@L 99")
+			IF m.Processed != INT(m.Processed)
+				m.Serialized = m.Serialized + TRANSFORM(INT((m.Processed - INT(m.Processed)) * 60), "@L 99")
+			ENDIF
+
+			RETURN m.Serialized
+
 		OTHERWISE
 			RETURN This.Value.Serialize(m.Value, m.Level)
 		ENDCASE
@@ -1224,7 +1231,11 @@ DEFINE CLASS _iCalValue AS _iCalBase
 			RETURN CHRTRAN(m.Serialized, '"', "")
 
 		CASE This.Value.DataType == "UTC-OFFSET"
-			RETURN VAL(LEFT(m.Serialized, 3)) * 60 + VAL(SUBSTR(m.Serialized, 4, 2)) + IIF(LEN(m.Serialized) = 7, VAL(SUBSTR(m.Serialized, 6, 2)) / 60, 0)
+			m.Parsed = VAL(SUBSTR(m.Serialized, 2, 2)) * 60 + VAL(SUBSTR(m.Serialized, 4, 2)) + IIF(LEN(m.Serialized) = 7, VAL(SUBSTR(m.Serialized, 6, 2)) / 60, 0)
+			IF LEFT(m.Serialized, 1) == "-"
+				m.Parsed = -m.Parsed
+			ENDIF
+			RETURN m.Parsed
 
 		OTHERWISE
 			RETURN This.Value.Parse(m.Serialized, m.Level)

@@ -1,6 +1,7 @@
 # iCal4VFP :: Examples
 
 Go to
+
 - [Overview](README.md "Overview")
 - [Classes](classes.md "Classes")
 
@@ -10,7 +11,7 @@ Go to
 
 Creates an `iCalendar` object from scratch, by calling `CREATEOBJECT()` and then adding properties and components.
 
-Recreates the following iCalendar document (from the RFC5545 specification):
+Recreates the following iCalendar document (from the RFC 5545 specification):
 
 ```iCalendar
 BEGIN:VCALENDAR

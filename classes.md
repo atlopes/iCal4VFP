@@ -1,12 +1,13 @@
 # iCal4VFP :: Classes
 
 Go to
+
 - [Overview](README.md "Overview")
 - [Examples](examples.md "Examples")
 
 ## Classes
 
-For every Component, Property, Parameter, and Structured Type specified by RFC5545 there is a corresponding class definition (for instance, `iCalCompVEVENT`, `iCalPropDTSTART`, `iCalParmTZID`, and `iCalTypeDURATION`). When the name of the iCalendar element includes an hyphen, the corresponding name in the VFP class set uses an underscore symbol instead (for instance, `iCalPropLAST_MODIFIED`).
+For every Component, Property, Parameter, and Structured Type specified by RFC 5545 there is a corresponding class definition (for instance, `iCalCompVEVENT`, `iCalPropDTSTART`, `iCalParmTZID`, and `iCalTypeDURATION`). When the name of the iCalendar element includes an hyphen, the corresponding name in the VFP class set uses an underscore symbol instead (for instance, `iCalPropLAST_MODIFIED`).
 
 Values can be assigned to parameters and properties; parameters can be added to properties: properties and components can be added to components.
 

@@ -131,6 +131,8 @@ DEFINE CLASS ICSProcessor AS Custom
 	
 		CATCH TO m.Ops
 
+			This.ErrorCondition = m.Ops
+
 			m.Result = .NULL.
 
 		ENDTRY
@@ -204,7 +206,7 @@ DEFINE CLASS ICSProcessor AS Custom
 	ENDFUNC
 
 	* read the essential of an ICS object into a VFP cursor
-	FUNCTION ICSToCursor (ICSSource AS StringOriCalendar, CursorType AS String, CursorName AS String) AS Integer
+	FUNCTION ICSToCursor (ICSSource AS iCalendarOrString, CursorType AS String, CursorName AS String) AS Integer
 
 		SAFETHIS
 
@@ -219,6 +221,9 @@ DEFINE CLASS ICSProcessor AS Custom
 
 		CASE MEMLINES(m.ICSSource) > 1
 			m.Source = This.Read(m.ICSSource)
+
+		CASE LEFT(m.ICSSource, 7) == "http://" OR LEFT(m.ICSSource, 8) == "https://"
+			m.Source = This.ReadURL(m.ICSSource)
 
 		OTHERWISE
 			m.Source = This.ReadFile(m.ICSSource)
