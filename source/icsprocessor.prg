@@ -116,7 +116,7 @@ DEFINE CLASS ICSProcessor AS Custom
 	* read an ICS from a URL
 	FUNCTION ReadURL (URL AS String) AS iCalendar
 
-		ASSERT VARTYPE(m.ICSFile) == "C"
+		ASSERT VARTYPE(m.URL) == "C"
 
 		LOCAL Result AS iCalendar
 		LOCAL ICSResource AS String

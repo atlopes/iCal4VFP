@@ -87,6 +87,7 @@ DEFINE CLASS _iCalComponent AS _iCalElement
 						'<memberdata name="geticproperty" type="method" display="GetICProperty"/>' + ;
 						'<memberdata name="geticpropertyvalue" type="method" display="GetICPropertyValue"/>' + ;
 						'<memberdata name="geticpropertiescount" type="method" display="GetICPropertiesCount"/>' + ;
+						'<memberdata name="recreate" type="method" display="Recreate"/>' + ;
 						"</VFPData>"
 
 	* while destroying the object, clear the arrays of references to properties and components
@@ -385,6 +386,42 @@ DEFINE CLASS _iCalComponent AS _iCalElement
 
 	ENDFUNC
 
+	* recreate a component and its elements, so that it can be dettached from its container and does not depend on its state
+	FUNCTION Recreate (NoComponents AS Logical) AS _iCalComponent
+
+		ASSERT VARTYPE(m.NoComponents) == "L"
+
+		LOCAL Recreated AS _iCalComponent
+		LOCAL SourceProperty AS _iCalProperty
+		LOCAL TargetProperty AS _iCalProperty
+		LOCAL SourceComponent AS _iCalComponent
+		LOCAL LoopIndex AS Integer
+
+		* we start by creating an empty instance
+		m.Recreated = CREATEOBJECT(This.Class)
+		* get all the properties
+		FOR m.LoopIndex = 1 TO This.GetICPropertiesCount()
+			m.SourceProperty = This.GetICProperty(m.LoopIndex)
+			IF !ISNULL(m.SourceProperty)
+				m.TargetProperty = m.Recreated.AddICProperty(m.SourceProperty.ICName)
+				m.TargetProperty.Parse(m.SourceProperty.Serialize(.T.))
+			ENDIF
+		ENDFOR
+		* if the recreation is recursive
+		IF !m.NoComponents
+			* get all components
+			FOR m.LoopIndex = 1 TO This.GetICComponentsCount()
+				m.SourceComponent = This.GetICComponent(m.LoopIndex)
+				IF !ISNULL(m.SourceComponent)
+					m.Recreated.AddICComponent(m.SourceComponent.Recreate())
+				ENDIF
+			ENDFOR
+		ENDIF
+
+		RETURN m.Recreated
+
+	ENDFUNC
+
 ENDDEFINE
 
 * general iCalendar property class definition
@@ -532,7 +569,7 @@ DEFINE CLASS _iCalProperty AS _iCalValueHandler
 	ENDFUNC
 
 	* generate the property in iCalendar format
-	FUNCTION Serialize () AS String
+	FUNCTION Serialize (NoLineBreak AS Logical) AS String
 
 		SAFETHIS
 
@@ -569,24 +606,29 @@ DEFINE CLASS _iCalProperty AS _iCalValueHandler
 
 			m.Stream = m.Stream + ":" + m.SerializedValue
 
-			* if needed, break the property contents into safe-width lines
-			m.StreamLine = LEFT(m.Stream, ICAL_LINE)
-			m.Stream = SUBSTR(m.Stream, ICAL_LINE + 1)
-			DO WHILE !EMPTY(m.StreamLine)
-				* encoded as utf-8
-				m.StreamUTF8 = STRCONV(STRCONV(m.StreamLine, 1), 9)
-				* if it goes over the limit
-				IF LEN(m.StreamUTF8) > ICAL_LINE
-					* reduce 4 ANSI characters at the time, by passing the last 4 to what is yet to be done, and try again
-					m.Stream = RIGHT(m.StreamLine, 4) + m.Stream
-					m.StreamLine = LEFT(m.StreamLine, LEN(m.StreamLine) - 4)
-				ELSE
-					* if it fits, then consider that it's serialized and move to the rest of the property contens
-					m.Serialized = m.Serialized + IIF(!EMPTY(m.Serialized), HTAB, "") + m.StreamUTF8 + CRLF
-					m.StreamLine = LEFT(m.Stream, ICAL_LINE)
-					m.Stream = SUBSTR(m.Stream, ICAL_LINE + 1)
-				ENDIF
-			ENDDO
+			* break the property contents into safe-width lines, unless we require a full-length serialization
+			IF !m.NoLineBreak
+				m.StreamLine = LEFT(m.Stream, ICAL_LINE)
+				m.Stream = SUBSTR(m.Stream, ICAL_LINE + 1)
+				DO WHILE !EMPTY(m.StreamLine)
+					* encoded as utf-8
+					m.StreamUTF8 = STRCONV(STRCONV(m.StreamLine, 1), 9)
+					* if it goes over the limit
+					IF LEN(m.StreamUTF8) > ICAL_LINE
+						* reduce 4 ANSI characters at the time, by passing the last 4 to what is yet to be done, and try again
+						m.Stream = RIGHT(m.StreamLine, 4) + m.Stream
+						m.StreamLine = LEFT(m.StreamLine, LEN(m.StreamLine) - 4)
+					ELSE
+						* if it fits, then consider that it's serialized and move to the rest of the property contens
+						m.Serialized = m.Serialized + IIF(!EMPTY(m.Serialized), HTAB, "") + m.StreamUTF8 + CRLF
+						m.StreamLine = LEFT(m.Stream, ICAL_LINE)
+						m.Stream = SUBSTR(m.Stream, ICAL_LINE + 1)
+					ENDIF
+				ENDDO
+			ELSE
+				* no line break? just encode into UTF-8
+				m.Serialized = STRCONV(STRCONV(m.Stream, 1), 9)
+			ENDIF
 
 		ENDIF
 

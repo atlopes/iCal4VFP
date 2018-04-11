@@ -47,7 +47,7 @@ The ICSProcessor class is intended to process an iCalendar formatted source: an 
 
 ### Components classes
 
-In iCalendar, components are container objects that integrate properties and, eventually, other components. They can be initialized and defined as a sequence of `CREATEOBJECT()` function calls, or through a method of the ICSProcessor class.
+In iCalendar, components are container objects that integrate properties and, eventually, other components. They can be initialized and defined as a sequence of `AddIC*` method calls, or `CREATEOBJECT()` function calls, or through a method of the ICSProcessor class.
 
 	iCalendar
 	iCalCompVEVENT
@@ -72,6 +72,7 @@ In iCalendar, components are container objects that integrate properties and, ev
 | GeICProperty | O | Returns a previously added `_iCalProperty` based object |
 | GeICPropertiesCount | N | Returns the number of previously added `_iCalProperty` based objects |
 | GeICPropertyValue | * | Returns the value of a previously added `_iCalProperty` based object |
+| Recreate | O | Returns a dettached copy of the component and its parts (including other components), that can be used even after its container is released |
 
 #### Methods (iCalendar)
 
