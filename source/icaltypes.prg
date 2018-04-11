@@ -1,3 +1,11 @@
+*!*	+--------------------------------------------------------------------+
+*!*	|                                                                    |
+*!*	|    iCal4VFP                                                        |
+*!*	|                                                                    |
+*!*	|    Source and docs: https://bitbucket.org/atlopes/ical4vfp         |
+*!*	|                                                                    |
+*!*	+--------------------------------------------------------------------+
+
 *!*	iCalendar types classes
 
 *!*	Adds the classes to support iCalendar structured data types:

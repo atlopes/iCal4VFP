@@ -1,3 +1,11 @@
+*!*	+--------------------------------------------------------------------+
+*!*	|                                                                    |
+*!*	|    iCal4VFP                                                        |
+*!*	|                                                                    |
+*!*	|    Source and docs: https://bitbucket.org/atlopes/ical4vfp         |
+*!*	|                                                                    |
+*!*	+--------------------------------------------------------------------+
+
 *!*	iCalendar components sub-classes
 
 * install dependencies

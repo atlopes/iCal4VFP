@@ -1,3 +1,11 @@
+*!*	+--------------------------------------------------------------------+
+*!*	|                                                                    |
+*!*	|    iCal4VFP                                                        |
+*!*	|                                                                    |
+*!*	|    Source and docs: https://bitbucket.org/atlopes/ical4vfp         |
+*!*	|                                                                    |
+*!*	+--------------------------------------------------------------------+
+
 *!*	iCalendar VFP classes
 
 *!*	In this file:
@@ -182,7 +190,7 @@ DEFINE CLASS _iCalComponent AS _iCalElement
 		* a new sub-component?
 		CASE UPPER(LEFT(m.Serialized, 6)) == "BEGIN:"
 			m.ComponentName = UPPER(TRIM(SUBSTR(m.Serialized, 7)))
-			m.ComponentObject = This.AddICComponent(This.iCalCreateObject("Comp", m.ComponentName, This.ICName))
+			m.ComponentObject = This.AddICComponent(m.ComponentName)
 			* the new sub-component is not recognized / accepted?
 			IF ISNULL(m.ComponentObject)
 				* then ignore its definition
@@ -201,7 +209,7 @@ DEFINE CLASS _iCalComponent AS _iCalElement
 		* try to parse a property
 		OTHERWISE
 			m.PropertyName = UPPER(GETWORDNUM(m.Serialized, 1, ";:"))
-			m.PropertyObject = This.AddICProperty(This.iCalCreateObject("Prop", m.PropertyName, This.ICName))
+			m.PropertyObject = This.AddICProperty(m.PropertyName)
 			* found a class for it? use the object's parser
 			IF !ISNULL(m.PropertyObject)
 				m.PropertyObject.Parse(m.Serialized)
@@ -210,39 +218,65 @@ DEFINE CLASS _iCalComponent AS _iCalElement
 
 	ENDFUNC
 
-	* add a propriety to the component
-	FUNCTION AddICProperty (Property AS _iCalProperty) AS _iCalProperty
+	* add a property to the component
+	FUNCTION AddICProperty (Property AS _iCalPropertyOrString, InitialValue AS AnyType, Flags AS Integer) AS _iCalProperty
 
 		SAFETHIS
 
-		ASSERT VARTYPE(m.Property) $ "OX"
+		ASSERT (PCOUNT() = 1 AND VARTYPE(m.Property) $ "OX") OR (PCOUNT() >= 1 AND VARTYPE(m.Property) == "C" AND (PCOUNT() < 3 OR VARTYPE(m.Flags) == "N"))
 
-		IF !ISNULL(m.Property)
+		LOCAL ToAdd AS _iCalProperty
+
+		* if the property was given as a name, create the object
+		IF VARTYPE(m.Property) == "C"
+			DO CASE
+			CASE PCOUNT() = 1
+				m.ToAdd = This.iCalCreateObject(ICAL_PROPERTY, m.Property, This.ICName)
+			CASE PCOUNT() = 2
+				m.ToAdd = This.iCalCreateObject(ICAL_PROPERTY, m.Property, This.ICName, m.InitialValue)
+			OTHERWISE
+				m.ToAdd = This.iCalCreateObject(ICAL_PROPERTY, m.Property, This.ICName, m.InitialValue, m.Flags)
+			ENDCASE
+		ELSE
+			m.ToAdd = m.Property
+		ENDIF
+
+		IF !ISNULL(m.ToAdd)
 			This.ICPropertiesCount = This.ICPropertiesCount + 1
 			DIMENSION This.ICProperties(This.ICPropertiesCount)
-			This.ICProperties(This.ICPropertiesCount) = m.Property
+			This.ICProperties(This.ICPropertiesCount) = m.ToAdd
 		ENDIF
 		
-		RETURN m.Property
+		RETURN m.ToAdd
 
 	ENDFUNC
 
 	* add a sub-component to the component
-	FUNCTION AddICComponent (Component AS _iCalComponent) AS _iCalComponent
+	FUNCTION AddICComponent (Component AS _iCalComponentOrString) AS _iCalComponent
 
 		SAFETHIS
 
-		ASSERT VARTYPE(m.Component) $ "OX"
+		ASSERT VARTYPE(m.Component) $ "COX"
 
-		IF !ISNULL(m.Component)
+		LOCAL ToAdd AS _iCalComponent
+
+		IF VARTYPE(m.Component) == "C"
+			m.ToAdd = This.iCalCreateObject(ICAL_COMPONENT, m.Component, This.ICName)
+		ELSE
+			m.ToAdd = m.Component
+		ENDIF
+
+		IF !ISNULL(m.ToAdd)
 			* but only if it is part of the allowed components
-			IF (This.IncludeComponents == "*ANY" AND !(m.Component.ICName == This.ICName)) OR ATC("," + m.Component.ICName + ",", "," + This.IncludeComponents + ",") != 0
+			IF (This.IncludeComponents == "*ANY" AND !(m.ToAdd.ICName == This.ICName)) OR ATC("," + m.ToAdd.ICName + ",", "," + This.IncludeComponents + ",") != 0
 				This.ICComponentsCount = This.ICComponentsCount + 1
 				DIMENSION This.ICComponents(This.ICComponentsCount)
-				This.ICComponents(This.ICComponentsCount) = m.Component
-				RETURN m.Component
+				This.ICComponents(This.ICComponentsCount) = m.ToAdd
+				RETURN m.ToAdd
 			ENDIF
 		ENDIF
+
+		m.ToAdd = .NULL.
 
 		RETURN .NULL.
 
@@ -391,28 +425,43 @@ DEFINE CLASS _iCalProperty AS _iCalValueHandler
 	ENDFUNC
 
 	* add an iCalendar parameter to the property
-	FUNCTION AddICParameter (Parameter AS _iCalParameter) AS _iCalParameter
+	FUNCTION AddICParameter (Parameter AS _iCalParameterOrString, InitialValue AS AnyType, Flags AS Integer) AS _iCalParameter
 
 		SAFETHIS
 
-		ASSERT VARTYPE(m.Parameter) $ "OX"
+		ASSERT (PCOUNT() = 1 AND VARTYPE(m.Parameter) $ "OX") OR (PCOUNT() >= 1 AND VARTYPE(m.Parameter) == "C" AND (PCOUNT() < 3 OR VARTYPE(m.Flags) == "N"))
 
 		LOCAL ARRAY DataTypes(1)
+		LOCAL ToAdd AS _iCalProperty
 
-		IF !ISNULL(m.Parameter)
+		* if the property was given as a name, create the object
+		IF VARTYPE(m.Parameter) == "C"
+			DO CASE
+			CASE PCOUNT() = 1
+				m.ToAdd = This.iCalCreateObject(ICAL_PARAMETER, m.Parameter, This.ICName)
+			CASE PCOUNT() = 2
+				m.ToAdd = This.iCalCreateObject(ICAL_PARAMETER, m.Parameter, This.ICName, m.InitialValue)
+			OTHERWISE
+				m.ToAdd = This.iCalCreateObject(ICAL_PARAMETER, m.Parameter, This.ICName, m.InitialValue, m.Flags)
+			ENDCASE
+		ELSE
+			m.ToAdd = m.Parameter
+		ENDIF
+
+		IF !ISNULL(m.ToAdd)
 			* the VALUE parameter is a special case: it may change the parent property data type
 			IF m.Parameter.ICName == "VALUE" AND ;
 					ALINES(m.DataTypes, This.HValue.Value.DataType + "," + This.HValue.Value.AlternativeDataTypes, 1 + 4, ",") > 1 AND ;
-					(ASCAN(m.DataTypes, m.Parameter.GetValue(), -1, -1, 1, 2 + 4) != 0 OR This.Extensions)
-				This.HValue.Value.DataType = UPPER(m.Parameter.GetValue())
+					(ASCAN(m.DataTypes, m.ToAdd.GetValue(), -1, -1, 1, 2 + 4) != 0 OR This.Extensions)
+				This.HValue.Value.DataType = UPPER(m.ToAdd.GetValue())
 			ENDIF
 
 			This.ICParametersCount = This.ICParametersCount + 1
 			DIMENSION This.ICParameters(This.ICParametersCount)
-			This.ICParameters(This.ICParametersCount) = m.Parameter
+			This.ICParameters(This.ICParametersCount) = m.ToAdd
 		ENDIF
 
-		RETURN m.Parameter
+		RETURN m.ToAdd
 
 	ENDFUNC
 
@@ -607,7 +656,7 @@ DEFINE CLASS _iCalProperty AS _iCalValueHandler
 				* a parameter was set?
 				IF m.ParameterSet
 					* try to instantiate an object, if known
-					m.ParameterObject = This.iCalCreateObject("Parm", m.ParameterName, This.HostComponent)
+					m.ParameterObject = This.iCalCreateObject(ICAL_PARAMETER, m.ParameterName, This.HostComponent)
 					* a parameter class could be found?
 					IF !ISNULL(m.ParameterObject)
 						* set the value(s) and add the parameter to the property
@@ -1348,24 +1397,40 @@ DEFINE CLASS _iCalElement AS _iCalBase
 	ENDFUNC
 
 	* a general method to create an iCalendar object of any type ("Comp", "Prop", or "Parm")
-	FUNCTION iCalCreateObject (ClassType AS String, Name AS String, Host AS String) AS Object
+	FUNCTION iCalCreateObject (ClassType AS String, Name AS String, Host AS String, InitialValue AS AnyType, Flags AS Integer) AS Object
 
 		SAFETHIS
 
-		ASSERT VARTYPE(m.ClassType) + VARTYPE(m.Name) == "CC" AND VARTYPE(m.Host) $ "CX"
+		ASSERT VARTYPE(m.ClassType) + VARTYPE(m.Name) == "CC" AND VARTYPE(m.Host) $ "CX" AND (PCOUNT() < 5 OR VARTYPE(m.Flags) == "N")
 
 		LOCAL SafeName AS String
 		LOCAL Instance AS Object
+		LOCAL Additional AS Integer
 
 		This.HostComponent = CHRTRAN(NVL(m.Host, ""), "-", "_")
 		m.SafeName = "iCal" + m.ClassType + CHRTRAN(m.Name, "-", "_")
+		m.Additional = PCOUNT() - 3
 
 		TRY
-			m.Instance = CREATEOBJECT(m.SafeName)
+			DO CASE
+			CASE m.Additional < 1
+				m.Instance = CREATEOBJECT(m.SafeName)
+			CASE m.Additional = 1
+				m.Instance = CREATEOBJECT(m.SafeName, m.InitialValue)
+			OTHERWISE
+				m.Instance = CREATEOBJECT(m.SafeName, m.InitialValue, m.Flags)
+			ENDCASE
 			IF !EMPTY(m.Instance.AlternativeClasses) AND ATC("," + This.HostComponent + ",", "," + m.Instance.AlternativeClasses + ",") != 0
 				m.SafeName = m.SafeName + "_" + This.HostComponent
 				m.Instance = .NULL.
-				m.Instance = CREATEOBJECT(m.SafeName)
+				DO CASE
+				CASE m.Additional < 1
+					m.Instance = CREATEOBJECT(m.SafeName)
+				CASE m.Additional = 1
+					m.Instance = CREATEOBJECT(m.SafeName, m.InitialValue)
+				OTHERWISE
+					m.Instance = CREATEOBJECT(m.SafeName, m.InitialValue, m.Flags)
+				ENDCASE
 			ENDIF
 		CATCH
 			m.Instance = .NULL.
