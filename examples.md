@@ -87,6 +87,4 @@ Displays a World Clock with current UTC time, PC's local time, and local time of
 
 ![World Clock form](examples/tzurl.png "World Clock form")
 
-[SCX Source](examples/world-clock.zip "SCX Source") or (Source)[examples/world-clock.sc2 "Source"]
-
-
+[SCX Source](examples/world-clock.zip "SCX Source") or [Source](examples/world-clock.sc2 "Source")
