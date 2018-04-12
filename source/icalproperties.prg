@@ -515,6 +515,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 		LOCAL ReCount AS Integer
 		LOCAL Current AS Datetime
 		LOCAL Until AS Datetime
+		LOCAL Interval AS Integer
 		LOCAL STUsage AS Logical
 		LOCAL NextSavingTime AS Datetime
 		LOCAL TzName AS String
@@ -545,6 +546,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 		This.RuleCollectionToArray("ByMinute", m.Rule.ByMinute)
 		This.RuleCollectionToArray("BySecond", m.Rule.BySecond)
 		This.RuleCollectionToArray("BySetPos", m.Rule.BySetPos)
+		m.Interval = NVL(m.Rule.Interval, 1)
 		* set the Until date to local time, if necessary
 		IF !ISNULL(m.Rule.Until)
 			IF m.Rule.IsUTC AND !ISNULL(m.TZ)
@@ -648,31 +650,31 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 			* calculate the next interval, depending on the frequency (a valid date is always safely generated)
 			DO CASE
 			CASE m.Rule.Freq == "YEARLY"
-				m.YearPart = m.YearPart + m.Rule.Interval
+				m.YearPart = m.YearPart + m.Interval
 			CASE m.Rule.Freq == "MONTHLY"
-				m.MonthPart = m.MonthPart + m.Rule.Interval
+				m.MonthPart = m.MonthPart + m.Interval
 				IF m.MonthPart > 12
 					m.YearPart = m.YearPart + INT((m.MonthPart - 1) / 12)
 					m.MonthPart = (m.MonthPart - 1) % 12 + 1
 				ENDIF
 			CASE m.Rule.Freq == "WEEKLY"
-				m.DatePart = TTOD(m.Current) + 7 * m.Rule.Interval
+				m.DatePart = TTOD(m.Current) + 7 * m.Interval
 				m.YearPart = YEAR(m.DatePart)
 				m.MonthPart = MONTH(m.DatePart)
 				m.DayPart = DAY(m.DatePart)
 			CASE m.Rule.Freq == "DAILY"
-				m.DatePart = TTOD(m.Current) + m.Rule.Interval
+				m.DatePart = TTOD(m.Current) + m.Interval
 				m.YearPart = YEAR(m.DatePart)
 				m.MonthPart = MONTH(m.DatePart)
 				m.DayPart = DAY(m.DatePart)
 			OTHERWISE
 				DO CASE
 				CASE m.Rule.Freq == "HOURLY"
-					m.DatetimePart = m.Current + HOUR_IN_SECONDS * m.Rule.Interval
+					m.DatetimePart = m.Current + HOUR_IN_SECONDS * m.Interval
 				CASE m.Rule.Freq == "MINUTELY"
-					m.DatetimePart = m.Current + MINUTE_IN_SECONDS * m.Rule.Interval
+					m.DatetimePart = m.Current + MINUTE_IN_SECONDS * m.Interval
 				CASE m.Rule.Freq == "SECONDELY"
-					m.DatetimePart = m.Current + m.Rule.Interval
+					m.DatetimePart = m.Current + m.Interval
 				OTHERWISE
 					EXIT
 				ENDCASE
@@ -812,7 +814,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 		* rule set?
 		IF !ISNULL(m.Rule.ByWeekNo) AND m.Rule.Freq == "YEARLY"
 
-			m.FDWeek = VAL(STREXTRACT("SU:1:MO:2:TU:3:WE:4:TH:5:FR:6:SA:7:", m.Rule.WkSt + ":", ":"))
+			m.FDWeek = VAL(STREXTRACT("SU:1:MO:2:TU:3:WE:4:TH:5:FR:6:SA:7:", NVL(m.Rule.WkSt, "MO") + ":", ":"))
 			m.FirstDay = DATE(YEAR(m.RefDate), 1, 1)
 			m.FDWYear = DOW(m.FirstDay, m.FDWeek) + 1
 			m.CalcDate = m.FirstDay + (m.FDWeek - m.FDWYear)
@@ -1024,7 +1026,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 
 			CASE m.Rule.Freq == "YEARLY" AND ISNULL(m.Rule.ByWeekNo) AND ISNULL(m.Rule.ByMonth)
 				* expand
-				m.FDWeek = VAL(STREXTRACT("SU:1:MO:2:TU:3:WE:4:TH:5:FR:6:SA:7:", m.Rule.WkSt + ":", ":"))
+				m.FDWeek = VAL(STREXTRACT("SU:1:MO:2:TU:3:WE:4:TH:5:FR:6:SA:7:", NVL(m.Rule.WkSt, "MO") + ":", ":"))
 				FOR m.Entry = 1 TO ALEN(This.ByDay)
 					m.CalcDate = This.GetStartBasedDate(m.Start, DATE(YEAR(m.RefDate), 1, 1), 0, "RRRSSS")
 					m.PosWeek = VAL(This.ByDay(m.Entry))
@@ -1111,7 +1113,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 
 			CASE m.Rule.Freq == "WEEKLY"
 				* expand
-				m.FDWeek = VAL(STREXTRACT("SU:1:MO:2:TU:3:WE:4:TH:5:FR:6:SA:7:", m.Rule.WkSt + ":", ":"))
+				m.FDWeek = VAL(STREXTRACT("SU:1:MO:2:TU:3:WE:4:TH:5:FR:6:SA:7:", NVL(m.Rule.WkSt, "MO") + ":", ":"))
 				m.CalcDate = m.RefDate - 86400 * (DOW(m.RefDate, m.FDWeek) - 1)
 				FOR m.Entry = 1 TO 7
 					IF ASCAN(This.ByDay, SUBSTR(":SUMOTUWETHFRSA", DOW(m.CalcDate) * 2, 2)) != 0

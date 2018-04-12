@@ -477,23 +477,15 @@ DEFINE CLASS iCalTypeRECUR AS _iCalType
 			ENDCASE
 
 			IF m.Abort
+				m.Parsed = .F.
 				EXIT
+			ELSE
+				m.Parsed = .T.
 			ENDIF
 		ENDFOR
 
-		m.Parsed = !m.Abort
-
-		IF m.Parsed
-			IF ISNULL(This.Interval)
-				This.Interval = 1
-			ENDIF
-			IF ISNULL(This.WkSt)
-				This.WkSt = "MO"
-			ENDIF
-		ENDIF
-
 		RETURN m.Parsed
-		
+
 	ENDFUNC
 
 ENDDEFINE
