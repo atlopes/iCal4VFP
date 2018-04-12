@@ -194,3 +194,15 @@ In iCalendar, components are container objects that integrate properties and, ev
 | GetValue | * | Returns the parameter value |
 | GetValueCount | N | Returns the number of value elements (in a list) |
 | UnsetValue | * | Clears the parameter value |
+
+### Miscellaneous: TZURL
+
+Access to TZURL timezone data. The class collects the defined timezones in the TZURL service and stores them in the `m.TzURL.Timezones` collection.
+
+#### Methods
+
+| Name  | Type  | Obs |
+| ------------ | ------------ | ------------ |
+| Full  | O | Returns an iCalCompVTIMEZONE object for a specific TZID (member of the `Timezones` collection)  |
+| Minimal | O | Returns an iCalCompVTIMEZONE object holding the minimal information of a specific TZID (member of the `Timezones` collection), disregarding all historical information |
+

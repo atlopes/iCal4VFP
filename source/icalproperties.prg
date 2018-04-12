@@ -507,7 +507,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 
 		SAFETHIS
 
-		ASSERT VARTYPE(m.Start) $ "DT" AND VARTYPE(m.Finish) $ "DT" AND VARTYPE(m.TZ) $ "OX" AND VARTYPE(m.AddDates) $ "OX" AND VARTYPE(m.Exceptions) $ "OX" AND VARTYPE(m.CalcNext) == "L"
+		ASSERT VARTYPE(m.Start) $ "DT" AND VARTYPE(m.Finish) $ "DT" AND VARTYPE(m.TZ) $ "OX" AND VARTYPE(m.AddDates) $ "OX" AND VARTYPE(m.ExceptDates) $ "OX" AND VARTYPE(m.CalcNext) == "L"
 
 		LOCAL Rule AS iCalTypeRECUR
 		LOCAL ReCursor AS String

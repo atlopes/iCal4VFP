@@ -80,3 +80,13 @@ RRULE:FREQ=MONTHLY;BYDAY=-1MO,-1TU,-1WE,-1TH,-1FR;BYSETPOS=-1
 Uses an iCalendar timezone definition for "America/New York" timezone to calculate its local time. Three times are displayed: the local time of the computer running the example (from `DATETIME()`), the UTC current time (from Win32 `GetSystemTime()` function), and New York local time, as calculated by a call to `iCalCompVTIMEZONE.ToLocalTime()` method.
 
 [Source](examples/UTC%20time%20to%20local%20time%20using%20VTIMEZONE.prg "Source")
+
+### Access to the TZURL timezone data
+
+Displays a World Clock with current UTC time, PC's local time, and local time of two timezones that the user can select.
+
+![World Clock form](examples/tzurl.png "World Clock form")
+
+[SCX Source](examples/world-clock.zip "SCX Source") or (Source)[examples/world-clock.sc2 "Source"]
+
+
