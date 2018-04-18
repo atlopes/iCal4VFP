@@ -11,7 +11,7 @@ A VFP library set to work with iCalendar objects.
 - Reads iCalendar data from .ics files, or from strings.
 - Allows for extensions at all levels (Components, Properties, Parameters, and Types).
 - Processes timezone information, and translates between UTC and local time.
-- Reads and integrats [TZURL](http://tzurl.org "TZURL") data.
+- Reads and integrates [TZURL](http://tzurl.org "TZURL") data.
 - iCalendar scalar types map to VFP data types (Date, Datetime, String, Logical, Numeric).
 
 Go to

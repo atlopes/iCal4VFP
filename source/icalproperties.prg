@@ -337,8 +337,16 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 	PreviousDate = .NULL.
 	PreviousTzName = ""
 	PreviousUTCDate = .NULL.
-	
-	HIDDEN ByMonth(1), ByWeekNo(1), ByYearDay(1), ByMonthDay(1), ByDay(1), ByHour(1), ByMinute(1), BySecond(1), BySetPos(1)
+
+	HIDDEN ByMonth(1)
+	HIDDEN ByWeekNo(1)
+	HIDDEN ByYearDay(1)
+	HIDDEN ByMonthDay(1)
+	HIDDEN ByDay(1)
+	HIDDEN ByHour(1)
+	HIDDEN ByMinute(1)
+	HIDDEN BySecond(1)
+	HIDDEN BySetPos(1)
 	DIMENSION ByMonth(1)
 	DIMENSION ByWeekNo(1)
 	DIMENSION ByYearDay(1)
@@ -605,11 +613,6 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 				AND m.ReCount <= NVL(m.Rule.Count, ICAL_ETERNITY) ;
 				AND (ISNULL(m.Until) OR m.Current <= m.Until)
 
-			* we're processing the next date: this will be the last interval
-			IF m.Current > m.Finish
-				m.NextInterval = .F.
-			ENDIF
-
 			* the start date will always be part of the date series
 			IF RECCOUNT(m.ReCursor) = 0
 				m.TempDates.Add(m.Start, TTOC(m.Start, 1))
@@ -640,6 +643,10 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 							m.TZ.PopSavingTime()
 						ENDIF
 						INSERT INTO (m.ReCursor) VALUES (m.DatetimePart, m.TzName)
+						* we're processing and found the next date: this will be the last interval
+						IF m.Current > m.Finish
+							m.NextInterval = .F.
+						ENDIF
 					ENDIF
 				ENDIF
 			ENDFOR
@@ -697,9 +704,13 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 				ENDIF
 			ENDCASE
 
-			* the reference date for the next interval
-			m.DatetimePart = DATETIME(m.YearPart, m.MonthPart, m.DayPart, m.HourPart, m.MinutePart, m.SecondPart)
-			m.Current = m.DatetimePart
+			* the reference date for the next interval (unless we found eternity)
+			IF m.YearPart <= 9999
+				m.DatetimePart = DATETIME(m.YearPart, m.MonthPart, m.DayPart, m.HourPart, m.MinutePart, m.SecondPart)
+				m.Current = m.DatetimePart
+			ELSE
+				EXIT
+			ENDIF
 
 		ENDDO
 

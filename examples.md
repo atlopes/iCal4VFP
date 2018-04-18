@@ -36,7 +36,7 @@ END:VCALENDAR
 Note how properties are instantiated with their own values. In case of dates, since they all are UTC dates in the example, a flag is passed to the value setting to signal the case.
 
 ```foxpro
-m.TstEvent.AddICproperty(CREATEOBJECT("iCalPropDTSTAMP", {^1996-07-04 12:00:00}, ICAL_DATE_IS_UTC))
+m.TstEvent.AddICproperty("DTSTAMP", {^1996-07-04 12:00:00}, ICAL_DATE_IS_UTC)
 ```
 
 [Source](examples/iCalendar-objects.prg "Source")
