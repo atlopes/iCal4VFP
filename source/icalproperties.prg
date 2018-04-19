@@ -95,7 +95,6 @@ DEFINE CLASS iCalPropCOMPLETED AS _iCalProperty
 	ICName = "COMPLETED"
 	xICName = "completed"
 
-	DefaultValue = DATETIME()
 	Value_DataType = "DATE-TIME"
 	Value_IsUTC = .T.
 
@@ -113,7 +112,6 @@ DEFINE CLASS iCalPropCREATED AS _iCalProperty
 	ICName = "CREATED"
 	xICName = "created"
 
-	DefaultValue = DATETIME()
 	Value_DataType = "DATE-TIME"
 	Value_IsUTC = .T.
 
@@ -141,7 +139,6 @@ DEFINE CLASS iCalPropDTSTAMP AS _iCalProperty
 	ICName = "DTSTAMP"
 	xICName = "dtstamp"
 
-	Value = DATETIME()
 	Value_DataType = "DATE-TIME"
 	Value_IsUTC = .T.
 
@@ -211,7 +208,6 @@ DEFINE CLASS iCalPropLAST_MODIFIED AS _iCalProperty
 	ICName = "LAST-MODIFIED"
 	xICName = "last-modified"
 
-	DefaultValue = DATETIME()
 	Value_DataType = "DATE-TIME"
 	Value_IsUTC = .T.
 
