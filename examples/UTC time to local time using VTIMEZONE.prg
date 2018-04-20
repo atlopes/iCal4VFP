@@ -11,8 +11,6 @@ LOCAL LocalTime AS Datetime
 LOCAL UTCTime AS Datetime
 LOCAL NYTime AS Datetime
 
-LOCAL SysTime_Structure AS String
-
 * New York timezone settings (from 1967 to present)
 
 TEXT TO m.ICS NOSHOW
@@ -75,23 +73,12 @@ END:VTIMEZONE
 END:VCALENDAR
 ENDTEXT
 
-m.SysTime_Structure = SPACE(16)
-DECLARE GetSystemTime IN WIN32API STRING @SYSTEMTIME
+m.ICProc = CREATEOBJECT("ICSProcessor")
+m.IC = m.ICProc.Read(m.ICS)
 
 * local and UTC current time
 m.LocalTime = DATETIME()
-GetSystemTime(@m.SysTime_Structure)
-
-m.UTCTime = DATETIME(CTOBIN(SUBSTR(m.SysTime_Structure, 1, 2), "2RS"), ;
-							CTOBIN(SUBSTR(m.SysTime_Structure, 3, 2), "2RS"), ;
-							CTOBIN(SUBSTR(m.SysTime_Structure, 7, 2), "2RS"), ;
-							CTOBIN(SUBSTR(m.SysTime_Structure, 9, 2), "2RS"), ;
-							CTOBIN(SUBSTR(m.SysTime_Structure, 11, 2), "2RS"), ;
-							CTOBIN(SUBSTR(m.SysTime_Structure, 13, 2), "2RS"))
-
-m.ICProc = CREATEOBJECT("ICSProcessor")
-
-m.IC = m.ICProc.Read(m.ICS)
+m.UTCTime = m.IC.UTCDatetime()
 
 * get the NY timezone definition
 m.NYTimezone = m.IC.GetTimezone("America/New_York")

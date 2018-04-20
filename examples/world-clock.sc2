@@ -184,10 +184,6 @@ DEFINE CLASS worldclock AS form
 
 	PROCEDURE Load
 		DO LOCFILE("tzurl.prg") 
-	ENDPROC
-
-	PROCEDURE Clock.Init
-		DECLARE GetSystemTime IN WIN32API STRING @SYSTEMTIME
 		
 		SET DATE ANSI
 		SET CENTURY ON
@@ -196,18 +192,11 @@ DEFINE CLASS worldclock AS form
 	ENDPROC
 
 	PROCEDURE Clock.Timer
-		LOCAL SysTime_Structure AS String
+		LOCAL UTCTime AS Datetime
 		
-		m.SysTime_Structure = SPACE(16)
+		Thisform.LockScreen = .T.
 		
-		GetSystemTime(@m.SysTime_Structure)
-		
-		m.UTCTime = DATETIME(CTOBIN(SUBSTR(m.SysTime_Structure, 1, 2), "2RS"), ;
-									CTOBIN(SUBSTR(m.SysTime_Structure, 3, 2), "2RS"), ;
-									CTOBIN(SUBSTR(m.SysTime_Structure, 7, 2), "2RS"), ;
-									CTOBIN(SUBSTR(m.SysTime_Structure, 9, 2), "2RS"), ;
-									CTOBIN(SUBSTR(m.SysTime_Structure, 11, 2), "2RS"), ;
-									CTOBIN(SUBSTR(m.SysTime_Structure, 13, 2), "2RS"))
+		m.UTCTime = Thisform.tzurl.UTCDatetime()
 		
 		Thisform.UTCdate.Caption = TRANSFORM(TTOD(m.UTCTime))
 		Thisform.UTCtime.Caption = STREXTRACT(TRANSFORM(m.UTCTime), " ", "")
@@ -220,6 +209,8 @@ DEFINE CLASS worldclock AS form
 		IF !ISNULL(Thisform.timezonetwo)
 			Thisform.TzTimeTwo.Caption = TRANSFORM(Thisform.timezonetwo.ToLocalTime(m.UTCTime))
 		ENDIF
+		
+		Thisform.LockScreen = .F.
 		
 	ENDPROC
 

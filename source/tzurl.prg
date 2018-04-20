@@ -16,7 +16,7 @@ IF !SYS(16) $ SET("Procedure")
 	SET PROCEDURE TO (SYS(16)) ADDITIVE
 ENDIF
 
-DEFINE CLASS TzURL AS Custom
+DEFINE CLASS TzURL AS _iCalBase
 
 	ADD OBJECT Timezones AS Collection
 

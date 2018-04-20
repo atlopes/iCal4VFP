@@ -61,7 +61,7 @@ Runs the complete set of the 42 Recurrence Rule examples of the [RFC 5545](https
 
 `#DEFINE` settings at the beginning of the program control how the example is executed.
 
-[Source](examples/rrfc%205545%20RRULE%20examples.prg "Source")
+[Source](examples/rfc%205545%20RRULE%20examples.prg "Source")
 
 ### Calculate recurrent dates defined as an iCalendar event 
 

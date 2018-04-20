@@ -32,6 +32,11 @@ iCal4VFP class stack:
 			iCalTypeDURATION
 			iCalTypeRECUR
 
+#### Methods
+
+| Name  | Type  | Obs |
+| UTCDatetime | T | Returns the current UTC Datetime |
+
 ### ICSProcessor class
 
 The ICSProcessor class is intended to process an iCalendar formatted source: an `.ics` file, or a iCalendar formatted string.
