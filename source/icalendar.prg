@@ -1563,6 +1563,7 @@ DEFINE CLASS _iCalBase AS Custom
 	_MemberData =	'<VFPData>' + ;
 							'<memberdata name="parse" type="method" display="Parse"/>' + ;
 							'<memberdata name="serialize" type="method" display="Serialize"/>' + ;
+							'<memberdata name="utcdatetime" type="method" display="UTCDatetime"/>' + ;
 						'</VFPData>'
 
 	FUNCTION Serialize () AS String
@@ -1571,6 +1572,23 @@ DEFINE CLASS _iCalBase AS Custom
 
 	FUNCTION Parse (Serialized AS String) AS Logical
 		RETURN .NULL.
+	ENDFUNC
+
+	FUNCTION UTCDatetime () AS Datetime
+
+		LOCAL SysTime_Structure AS String
+
+		m.SysTime_Structure = SPACE(16)
+		DECLARE GetSystemTime IN WIN32API AS _iCalAPIGetSystemTime STRING @SYSTEMTIME
+		_iCalAPIGetSystemTime(@m.SysTime_Structure)
+		CLEAR DLLS "_iCalAPIGetSystemTime"
+
+		RETURN DATETIME(CTOBIN(SUBSTR(m.SysTime_Structure, 1, 2), "2RS"), ;
+							CTOBIN(SUBSTR(m.SysTime_Structure, 3, 2), "2RS"), ;
+							CTOBIN(SUBSTR(m.SysTime_Structure, 7, 2), "2RS"), ;
+							CTOBIN(SUBSTR(m.SysTime_Structure, 9, 2), "2RS"), ;
+							CTOBIN(SUBSTR(m.SysTime_Structure, 11, 2), "2RS"), ;
+							CTOBIN(SUBSTR(m.SysTime_Structure, 13, 2), "2RS"))
 	ENDFUNC
 
 ENDDEFINE

@@ -18,7 +18,7 @@ ENDIF
 
 #DEFINE	SAFETHIS		ASSERT !USED("This") AND TYPE("This") == "O"
 
-DEFINE CLASS ICSProcessor AS Custom
+DEFINE CLASS ICSProcessor AS _iCalBase
 
 	ErrorCondition = .NULL.
 
