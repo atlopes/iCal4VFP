@@ -20,6 +20,16 @@ DEFINE CLASS TzURL AS _iCalBase
 
 	ADD OBJECT Timezones AS Collection
 
+	HIDDEN Cache
+	Cache = 30
+
+	_memberdata = '<VFPData>' + ;
+						'<memberdata name="timezones" type="property" display="Timezones"/>' + ;
+						'<memberdata name="full" type="method" display="Full"/>' + ;
+						'<memberdata name="minimal" type="method" display="Minimal"/>' + ;
+						'<memberdata name="setcache" type="method" display="SetCache"/>' + ;
+						'</VFPData>'
+
 	FUNCTION Init
 
 		LOCAL ARRAY TZIDs(1)
@@ -497,14 +507,47 @@ DEFINE CLASS TzURL AS _iCalBase
 		ENDFOR
 	ENDFUNC
 
-	* reads the complete timezone definition from TZURL.org
+	* reads the complete timezone definition from TZURL.org, or from cache
 	FUNCTION Full (TzID AS String) AS iCalCompVTIMEZONE
 
+		ASSERT VARTYPE(m.TzID) == "C"
+
 		LOCAL Timezone AS iCalCompVTIMEZONE
+		LOCAL ICS AS ICSProcessor
+		LOCAL iCal AS iCalendar
+		LOCAL LocalTz AS String
+		LOCAL SafetySetting AS String
 
 		* load the timezone definition into an iCalendar
 		m.ICS = CREATEOBJECT("ICSProcessor")
-		m.iCal = m.ICS.ReadURL("http://tzurl.org/zoneinfo/" + This.Timezones(m.TzID) + ".ics")
+		m.iCal = .NULL.
+
+		* before fetching the Timezone definition from TZURL, check if there a fresh copy in local cache
+		IF This.Cache > 0
+			m.LocalTz = ADDBS(SYS(2023)) + "iCal4VFP"
+			IF !DIRECTORY(m.LocalTz, 1)
+				MKDIR (m.LocalTz)
+			ENDIF
+			m.LocalTz = ADDBS(m.LocalTz) + CHRTRAN(m.TzID, "/+-", "___") + ".ics"
+			IF FILE(m.LocalTz) AND FDATE(m.LocalTz) + This.Cache >= DATE()
+				m.iCal = m.ICS.ReadFile(m.LocalTz)
+			ENDIF
+		ENDIF
+
+		* no recent local copy? fetch from the URL
+		IF ISNULL(m.iCal)
+			m.iCal = m.ICS.ReadURL("http://tzurl.org/zoneinfo/" + This.Timezones(m.TzID) + ".ics")
+			* but save it for late, if we are working with cache
+			IF This.Cache > 0
+				m.SafetySetting = SET("Safety")
+				SET SAFETY OFF
+				STRTOFILE(m.iCal.Serialize(), m.LocalTz, 0)
+				IF m.SafetySetting == "ON"
+					SET SAFETY ON
+				ENDIF
+			ENDIF
+		ENDIF
+
 		m.Timezone = m.iCal.GetTimezone()
 
 		* return a dettached version of the timezone
@@ -571,6 +614,15 @@ DEFINE CLASS TzURL AS _iCalBase
 		ENDIF
 
 		RETURN m.Minimal
+
+	ENDFUNC
+
+	* set the cache expiration period, in days
+	FUNCTION SetCache (Period AS Integer)
+
+		ASSERT VARTYPE(m.Period) == "N"
+
+		This.Cache = INT(m.Period)
 
 	ENDFUNC
 

@@ -35,6 +35,7 @@ iCal4VFP class stack:
 #### Methods
 
 | Name  | Type  | Obs |
+| ------------ | ------------ | ------------ |
 | UTCDatetime | T | Returns the current UTC Datetime |
 
 ### ICSProcessor class
@@ -210,4 +211,4 @@ Access to TZURL timezone data. The class collects the defined timezones in the T
 | ------------ | ------------ | ------------ |
 | Full  | O | Returns an iCalCompVTIMEZONE object for a specific TZID (member of the `Timezones` collection)  |
 | Minimal | O | Returns an iCalCompVTIMEZONE object holding the minimal information of a specific TZID (member of the `Timezones` collection), disregarding all historical information |
-
+| SetCache | * | Set the cache timeout, in days |
