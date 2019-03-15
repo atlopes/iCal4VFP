@@ -9,7 +9,11 @@
 *!*	iCalendar parameters sub-classes
 
 * install dependencies
-DO LOCFILE("icalendar.prg")
+IF _VFP.StartMode = 0
+	DO LOCFILE("icalendar.prg")
+ELSE
+	DO "icalendar.prg"
+ENDIF
 
 * install itself
 IF !SYS(16) $ SET("Procedure")

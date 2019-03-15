@@ -91,9 +91,9 @@ In iCalendar, components are container objects that integrate properties and, ev
 | Name  | Type  | Obs |
 | ------------ | ------------ | ------------ |
 | NextSavingTimeChange | T | Returns the next time in which a saving time change will occur, for a given date |
-| SavingTime | N | Returns the saving time (in seconds) for a given date |
 | ToLocalTime | T | Returns the local time corresponding to a given UTC time |
 | ToUTC | T | Returns the UTC time corresponding to a given local time |
+| UTCOffset | N | Returns the UTC offset (in seconds) for a given date |
 
 ### Properties classes
 

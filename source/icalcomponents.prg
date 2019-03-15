@@ -9,7 +9,11 @@
 *!*	iCalendar components sub-classes
 
 * install dependencies
-DO LOCFILE("icalendar.prg")
+IF _VFP.StartMode = 0
+	DO LOCFILE("icalendar.prg")
+ELSE
+	DO "icalendar.prg"
+ENDIF
 
 * install itself
 IF !SYS(16) $ SET("Procedure")
@@ -149,10 +153,10 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 							'<memberdata name="nextsavingtimechange" type="method" display="NextSavingTimeChange"/>' + ;
 							'<memberdata name="popsavingtime" type="method" display="PopSavingTime"/>' + ;
 							'<memberdata name="pushsavingtime" type="method" display="PushSavingTime"/>' + ;
-							'<memberdata name="savingtime" type="method" display="SavingTime"/>' + ;
 							'<memberdata name="tolocaltime" type="method" display="ToLocalTime"/>' + ;
 							'<memberdata name="toutc" type="method" display="ToUTC"/>' + ;
-						'</VFPData>'
+							'<memberdata name="utcoffset" type="method" display="UTCOffset"/>' + ;
+					'</VFPData>'
 
 	* save or restore saving time current settings
 	FUNCTION PushSavingTime ()
@@ -186,12 +190,12 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 		 ENDIF
 	ENDFUNC
 
-	* return the current saving time (in seconds) for a given date
-	FUNCTION SavingTime (RefDate AS Datetime) AS Integer
+	* return the UTC offset (in seconds) for a given time
+	FUNCTION UTCOffset (RefDate AS Datetime) AS Integer
 
-		ASSERT VARTYPE(m.RefDate) $ "DT"
+		ASSERT VARTYPE(m.RefDate) == "T"
 
-		RETURN This.ToUTC(m.RefDate) - IIF(VARTYPE(m.RefDate) == "D", DTOT(m.RefDate), m.RefDate)
+		RETURN m.RefDate - This.ToUTC(m.RefDate)
 
 	ENDFUNC
 	

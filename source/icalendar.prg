@@ -24,8 +24,13 @@
 *!*				classes for iCalendar structured types
 
 * install dependencies
-DO LOCFILE("tokenizer.prg")
-DO LOCFILE("icaltypes.prg")
+IF _VFP.StartMode = 0
+	DO LOCFILE("tokenizer.prg")
+	DO LOCFILE("icaltypes.prg")
+ELSE
+	DO "tokenizer.prg"
+	DO "icaltypes.prg"
+ENDIF
 
 * install itself
 IF !SYS(16) $ SET("Procedure")
