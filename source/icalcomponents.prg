@@ -10,10 +10,9 @@
 
 * install dependencies
 IF _VFP.StartMode = 0
-	DO LOCFILE("icalendar.prg")
-ELSE
-	DO "icalendar.prg"
+	SET PATH TO (JUSTPATH(SYS(16))) ADDITIVE
 ENDIF
+DO "icalendar.prg"
 
 * install itself
 IF !SYS(16) $ SET("Procedure")
@@ -402,8 +401,8 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 						ELSE
 							m.RDates = This.GetSurroundingRDATEs(m.RefTime, m.RefDate, m.TzComp.GetICProperty("RDATE", -1))
 							IF !ISNULL(m.RDates)
-								m.RefDate = m.RDates(1)
-								m.CalcNext = m.RDates(2)
+								m.RefDate = m.RDates.Item(1)
+								m.CalcNext = m.RDates.Item(2)
 								m.TzComp.LastChained = m.CalcNext
 								m.Period = .T.
 								m.RDates = .NULL.

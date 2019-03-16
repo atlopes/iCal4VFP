@@ -10,10 +10,9 @@
 
 * install dependencies
 IF _VFP.StartMode = 0
-	DO LOCFILE("icalendar.prg")
-ELSE
-	DO "icalendar.prg"
+	SET PATH TO (JUSTPATH(SYS(16))) ADDITIVE
 ENDIF
+DO "icalendar.prg"
 
 * install itself
 IF !SYS(16) $ SET("Procedure")

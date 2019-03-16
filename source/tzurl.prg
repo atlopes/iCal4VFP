@@ -9,7 +9,10 @@
 *!*	a VFP class to use the TzURL timezone data at http://www.tzurl.org
 
 * dependencies
-DO LOCFILE("icalloader.prg")
+IF _VFP.StartMode = 0
+	SET PATH TO (JUSTPATH(SYS(16))) ADDITIVE
+ENDIF
+DO "icalloader.prg"
 
 * install itself
 IF !SYS(16) $ SET("Procedure")
