@@ -25,11 +25,13 @@
 
 * install dependencies
 IF _VFP.StartMode = 0
-	DO LOCFILE("tokenizer.prg")
 	SET PATH TO (JUSTPATH(SYS(16))) ADDITIVE
-ELSE
-	DO "tokenizer.prg"
 ENDIF
+TRY
+	DO "tokenizer.prg"
+CATCH
+	DO LOCFILE("tokenizer.prg")
+ENDTRY
 DO "icaltypes.prg"
 
 * install itself
