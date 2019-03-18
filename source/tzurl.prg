@@ -526,23 +526,26 @@ DEFINE CLASS TzURL AS _iCalBase
 		m.iCal = .NULL.
 
 		* before fetching the Timezone definition from TZURL, check if there is a fresh copy in local cache
-		IF This.Cache > 0
-			m.LocalTz = ADDBS(SYS(2023)) + "iCal4VFP"
-			IF !DIRECTORY(m.LocalTz, 1)
-				MKDIR (m.LocalTz)
-			ENDIF
-			m.LocalTz = ADDBS(m.LocalTz) + CHRTRAN(m.TzID, "/+", "__") + ".ics"
-			IF FILE(m.LocalTz) AND FDATE(m.LocalTz) + This.Cache >= DATE()
+		m.LocalTz = ADDBS(SYS(2023)) + "iCal4VFP\" + CHRTRAN(m.TzID, "/+", "__") + ".ics"
+		IF !DIRECTORY(JUSTPATH(m.LocalTz))
+			MKDIR (JUSTPATH(m.LocalTz))
+		ENDIF
+
+		* Cache = 0 : read always from TzURL
+		* Cache < 0 : read always from cache, if available
+		* Cache > 0 : read from TzURL if file in cache older than Cache days, otherwise from cache, if available
+		IF This.Cache != 0
+			IF FILE(m.LocalTz) AND (This.Cache < 0 OR FDATE(m.LocalTz) + This.Cache >= DATE())
 				m.iCal = m.ICS.ReadFile(m.LocalTz)
 			ENDIF
 		ENDIF
 
-		* no recent local copy? fetch from the URL
+		* no (recent) local copy? fetch from the URL
 		IF ISNULL(m.iCal)
 			IF This.Timezones.GetKey(m.TzID) != 0
-				m.iCal = m.ICS.ReadURL("http://tzurl.org/zoneinfo/" + This.Timezones(m.TzID) + ".ics")
+				m.iCal = m.ICS.ReadURL("http://tzurl.org/zoneinfo/" + This.Timezones.Item(m.TzID) + ".ics")
 				* but save it for later if we are working with cache
-				IF !ISNULL(m.iCal) AND This.Cache > 0
+				IF !ISNULL(m.iCal) AND This.Cache != 0
 					m.SafetySetting = SET("Safety")
 					SET SAFETY OFF
 					STRTOFILE(m.iCal.Serialize(), m.LocalTz, 0)
