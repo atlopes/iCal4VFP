@@ -236,9 +236,9 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 		ENDIF
 
 		* the source time fits in the ST period set in a previous calculation?
-		IF !ISNULL(This.StartST) ;
-				AND ((m.ToUTC AND BETWEEN(m.RefTime, This.StartST, NVL(This.EndST, m.RefTime))) OR ;
-					(!m.ToUTC AND BETWEEN(m.RefTime + This.BiasST * 60, This.StartST, NVL(This.EndST, m.RefTime + This.BiasST * 60))))
+		IF !ISNULL(This.StartST) AND !ISNULL(This.EndST) ;
+				AND ((m.ToUTC AND m.RefTime > This.StartST AND m.RefTime < This.EndST) OR ;
+					(!m.ToUTC AND m.RefTime - This.BiasST * 60 > This.StartST AND m.RefTime - This.BiasST * 60 < This.EndST))
 
 			* use the stored bias, no need to go through the calculation, again
 			m.OffsetTo = This.BiasST
@@ -285,7 +285,7 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 					ENDIF
 
 					* we have a date, and it covers our time, and it's the closest to our time that we found so far?
-					IF !ISNULL(m.RefDate) AND !EMPTY(m.RefDate) AND m.RefDate < m.RefTime AND m.RefDate > m.ClosestDate
+					IF !ISNULL(m.RefDate) AND !EMPTY(m.RefDate) AND m.RefDate <= m.RefTime AND m.RefDate > m.ClosestDate
 						m.ClosestDate = m.RefDate
 						m.OffsetTo = m.TzComp.GetICPropertyValue("TZOFFSETTO")
 						This.TzName = NVL(m.TzComp.GetICPropertyValue("TZNAME"), "")
