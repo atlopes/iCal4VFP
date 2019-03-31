@@ -237,8 +237,8 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 
 		* the source time fits in the ST period set in a previous calculation?
 		IF !ISNULL(This.StartST) AND !ISNULL(This.EndST) ;
-				AND ((m.ToUTC AND m.RefTime > This.StartST AND m.RefTime < This.EndST) OR ;
-					(!m.ToUTC AND m.RefTime - This.BiasST * 60 > This.StartST AND m.RefTime - This.BiasST * 60 < This.EndST))
+				AND ((!m.ToUTC AND m.RefTime >= This.StartST AND m.RefTime < This.EndST) OR ;
+					(m.ToUTC AND m.RefTime + This.BiasST * 60 >= This.StartST AND m.RefTime + This.BiasST * 60 < This.EndST))
 
 			* use the stored bias, no need to go through the calculation, again
 			m.OffsetTo = This.BiasST
@@ -249,6 +249,7 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 			m.OffsetTo =  0
 			m.ClosestDate = {^0001-01-01}
 			This.TzName = ""
+			STORE .NULL. TO This.StartST, This.EndST
 
 			FOR m.CompIndex = 1 TO This.GetICComponentsCount()
 
@@ -285,24 +286,27 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 					ENDIF
 
 					* we have a date, and it covers our time, and it's the closest to our time that we found so far?
-					IF !ISNULL(m.RefDate) AND !EMPTY(m.RefDate) AND m.RefDate <= m.RefTime AND m.RefDate > m.ClosestDate
-						m.ClosestDate = m.RefDate
+					IF !ISNULL(m.RefDate) AND !EMPTY(m.RefDate) AND m.RefDate > m.ClosestDate
 						m.OffsetTo = m.TzComp.GetICPropertyValue("TZOFFSETTO")
-						This.TzName = NVL(m.TzComp.GetICPropertyValue("TZNAME"), "")
-						* store the results of our calculation for the next calls
-						IF m.Period
-							This.BiasST = m.OffsetTo
-							This.StartST = m.RefDate
-						ELSE
-							This.StartST = .NULL.
-							This.EndST = .NULL.
-							This.BiasST = 0
+						IF m.RefDate <= m.RefTime + IIF(m.ToUTC, m.OffsetTo * 60, 0)
+							m.ClosestDate = m.RefDate
+							This.TzName = NVL(m.TzComp.GetICPropertyValue("TZNAME"), "")
+							* store the results of our calculation for the next calls
+							IF m.Period
+								This.BiasST = m.OffsetTo
+								This.StartST = m.RefDate
+							ELSE
+								This.StartST = .NULL.
+								This.EndST = .NULL.
+								This.BiasST = 0
+							ENDIF
 						ENDIF
 					ENDIF
+	
 					* if we used a period in the last calculation
 					IF m.Period
 						* if the next occurence is before our current ST ending date, then move our ST ending period to that point
-						IF ISNULL(This.EndST) OR (m.RRule.NextDate > This.StartST AND This.EndST > m.RRule.NextDate)
+						IF ISNULL(This.EndST) OR (m.RRule.NextDate > This.StartST AND m.RRule.NextDate < This.EndST)
 							This.EndST = m.RRule.NextDate
 						ENDIF
 					ENDIF
