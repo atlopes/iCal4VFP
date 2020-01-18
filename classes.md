@@ -72,12 +72,12 @@ In iCalendar, components are container objects that integrate properties and, ev
 | Parse  | L | Parses a formatted segment of an iCalendar formatted element, a line at a time |
 | Serialize | C | Produces an iCalendar formatted object |
 | AddICComponent | O | Adds an `_iCalComponent` based object |
-| GeICComponent | O | Returns a previously added `_iCalComponent` based object |
-| GeICComponentsCount | N | Returns the number of previously added `_iCalComponent` based objects |
+| GetICComponent | O | Returns a previously added `_iCalComponent` based object |
+| GetICComponentsCount | N | Returns the number of previously added `_iCalComponent` based objects |
 | AddICProperty | O | Adds an `_iCalProperty` based object |
-| GeICProperty | O | Returns a previously added `_iCalProperty` based object |
-| GeICPropertiesCount | N | Returns the number of previously added `_iCalProperty` based objects |
-| GeICPropertyValue | * | Returns the value of a previously added `_iCalProperty` based object |
+| GetICProperty | O | Returns a previously added `_iCalProperty` based object |
+| GetICPropertiesCount | N | Returns the number of previously added `_iCalProperty` based objects |
+| GetICPropertyValue | * | Returns the value of a previously added `_iCalProperty` based object |
 | Recreate | O | Returns a dettached copy of the component and its parts (including other components), that can be used even after its container is released |
 
 #### Methods (iCalendar)
@@ -155,9 +155,9 @@ In iCalendar, components are container objects that integrate properties and, ev
 | GetValueCount | N | Returns the number of value elements (in a list) |
 | UnsetValue | * | Clears the property value |
 | AddICParameter | O | Adds an `_iCalParameter` based object |
-| GeICParameter | O | Returns a previously added `_iCalParameter` based object |
-| GeICParametersCount | N | Returns the number of previously added `_iCalParameter` based objects |
-| GeICParameterValue | * | Returns the value of a previously added `_iCalParameter` based object |
+| GetICParameter | O | Returns a previously added `_iCalParameter` based object |
+| GetICParametersCount | N | Returns the number of previously added `_iCalParameter` based objects |
+| GetICParameterValue | * | Returns the value of a previously added `_iCalParameter` based object |
 
 #### Methods (iCalPropRRULE)
 

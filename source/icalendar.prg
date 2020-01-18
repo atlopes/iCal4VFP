@@ -494,7 +494,7 @@ DEFINE CLASS _iCalProperty AS _iCalValueHandler
 
 		IF !ISNULL(m.ToAdd)
 			* the VALUE parameter is a special case: it may change the parent property data type
-			IF m.Parameter.ICName == "VALUE" AND ;
+			IF m.ToAdd.ICName == "VALUE" AND ;
 					ALINES(m.DataTypes, This.HValue.Value.DataType + "," + This.HValue.Value.AlternativeDataTypes, 1 + 4, ",") > 1 AND ;
 					(ASCAN(m.DataTypes, m.ToAdd.GetValue(), -1, -1, 1, 2 + 4) != 0 OR This.Extensions)
 				This.HValue.Value.DataType = UPPER(m.ToAdd.GetValue())

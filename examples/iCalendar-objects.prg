@@ -17,7 +17,7 @@ m.Tst.AddICProperty("VERSION")
 m.Tst.AddICProperty("PRODID")
 
 * add a VEVENT component to the created iCalendar core object
-m.TstEvent = m.Tst.AddICcomponent(CREATEOBJECT("iCalCompVEVENT"))
+m.TstEvent = m.Tst.AddICcomponent("VEVENT")
 
 * add properties to the VEVENT component (values come from VFP expressions, where possible)
 m.TstEvent.AddICproperty("DTSTAMP", {^1996-07-04 12:00:00}, ICAL_DATE_IS_UTC)
