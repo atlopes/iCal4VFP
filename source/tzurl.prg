@@ -563,8 +563,8 @@ DEFINE CLASS TzURL AS _iCalBase
 
 		m.Timezone = m.iCal.GetTimezone()
 
-		* return a dettached version of the timezone
-		RETURN m.Timezone.Recreate()
+		* return a dettached version of the timezone, if a timezone was found
+		RETURN IIF(ISNULL(m.Timezone), .NULL., m.Timezone.Recreate())
 
 	ENDFUNC
 
