@@ -220,6 +220,7 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 		SAFETHIS
 
 		LOCAL OffsetTo AS Number
+		LOCAL ClosestOffsetTo AS Number
 		LOCAL ClosestDate AS Datetime
 		LOCAL RefDate AS Datetime
 		LOCAL UntilDate AS Datetime
@@ -241,12 +242,12 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 					(m.ToUTC AND m.RefTime + This.BiasST * 60 >= This.StartST AND m.RefTime + This.BiasST * 60 < This.EndST))
 
 			* use the stored bias, no need to go through the calculation, again
-			m.OffsetTo = This.BiasST
+			m.ClosestOffsetTo = This.BiasST
 
 		ELSE
 
 			* calculate the offset to UTC
-			m.OffsetTo =  0
+			STORE 0 TO m.ClosestOffsetTo, m.OffsetTo
 			STORE {^0001-01-01} TO m.ClosestDate, m.ClosestStandardDate
 			This.TzName = ""
 			STORE .NULL. TO This.StartST, This.EndST
@@ -293,6 +294,7 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 						m.OffsetTo = m.TzComp.GetICPropertyValue("TZOFFSETTO")
 						IF m.RefDate <= m.RefTime + IIF(m.ToUTC, m.OffsetTo * 60, 0)
 							m.ClosestDate = m.RefDate
+							m.ClosestOffsetTo = m.OffsetTo
 							This.TzName = NVL(m.TzComp.GetICPropertyValue("TZNAME"), "")
 							* store the results of our calculation for the next calls
 							IF m.Period
@@ -320,10 +322,10 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
  
  		* we have a local time and want the UTC? subtract the bias
  		IF m.ToUTC	
- 			m.CalcTime = m.RefTime - m.OffsetTo * 60
+ 			m.CalcTime = m.RefTime - m.ClosestOffsetTo * 60
  		* we have a UTC and want the local time? add the bias
  		ELSE
- 			m.CalcTime = m.RefTime + m.OffsetTo * 60
+ 			m.CalcTime = m.RefTime + m.ClosestOffsetTo * 60
  		ENDIF
 
 		* done
