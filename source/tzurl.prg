@@ -579,8 +579,14 @@ DEFINE CLASS TzURL AS _iCalBase
 		LOCAL DaylightStart AS Datetime
 		LOCAL DateStart AS Datetime
 		LOCAL Standard AS iCalCompSTANDARD
+		LOCAL FallbackStandard AS iCalCompSTANDARD
 		LOCAL Daylight AS iCalCompDAYLIGHT
 		LOCAL LoopIndex AS Integer
+		LOCAL RRule AS iCalPropRRULE
+		LOCAL VRule AS iCalTypeRECUR
+		LOCAL UntilDate AS Datetime
+		LOCAL SetDates AS Integer
+		LOCAL AdditionalDate AS Datetime
 
 		* get the full definition
 		m.Timezone = This.Full(m.TzID)
@@ -595,20 +601,69 @@ DEFINE CLASS TzURL AS _iCalBase
 		* locate the last STANDARD definition
 		FOR m.LoopIndex = 1 TO m.Timezone.GetICComponentsCount("STANDARD")
 			m.TzComp = m.Timezone.GetICComponent("STANDARD", m.LoopIndex)
+			* when did it start
 			m.DateStart = m.TzComp.GetICPropertyValue("DTSTART")
+			* and some reset in the future
+			FOR m.SetDates = 1 TO m.TzComp.GetICPropertiesCount("RDATE")
+				m.AdditionalDate = m.TzComp.GetICPropertyValue("RDATE", m.SetDates)
+				IF m.AdditionalDate > m.DateStart
+					m.DateStart = m.AdditionalDate
+				ENDIF
+			ENDFOR
+			* but consider expired definitions
+			m.RRule = m.TzComp.GetICProperty("RRULE")
+			IF !ISNULL(m.RRule)
+				m.VRule = m.RRule.GetValue()
+				m.UntilDate = m.VRule.Until
+			ELSE
+				m.UntilDate = .NULL.
+			ENDIF
+			* check if it is the most recent in the past
 			IF m.DateStart > m.StandardStart AND m.DateStart < m.Now
-				m.Standard = m.TzComp
-				m.StandardStart = m.DateStart
+				* use it instead of the previous one what was found
+				IF m.Now <= NVL(m.UntilDate, m.Now)
+					m.Standard = m.TzComp
+					m.StandardStart = m.DateStart
+				ELSE
+					* unless it expired, meanwhile (but save last standard time, anyway)
+					IF !ISNULL(m.Standard)
+						m.FallbackStandard = m.Standard
+					ENDIF
+					m.Standard = .NULL.
+					m.StandardStart = {:}
+				ENDIF
 			ENDIF
 		ENDFOR
+		* use the fallback, if available and no standard definition for the time zone
+		IF ISNULL(m.Standard) AND !ISNULL(m.FallbackStandard)
+			m.Standard = m.FallbackStandard
+		ENDIF
 
-		* and now the last DAYLIGHT definition
+		* and now the last DAYLIGHT definition (same as above)
 		FOR m.LoopIndex = 1 TO m.Timezone.GetICComponentsCount("DAYLIGHT")
 			m.TzComp = m.Timezone.GetICComponent("DAYLIGHT", m.LoopIndex)
 			m.DateStart = m.TzComp.GetICPropertyValue("DTSTART")
+			FOR m.SetDates = 1 TO m.TzComp.GetICPropertiesCount("RDATE")
+				m.AdditionalDate = m.TzComp.GetICPropertyValue("RDATE", m.SetDates)
+				IF m.AdditionalDate > m.DateStart
+					m.DateStart = m.AdditionalDate
+				ENDIF
+			ENDFOR
+			m.RRule = m.TzComp.GetICProperty("RRULE")
+			IF !ISNULL(m.RRule)
+				m.VRule = m.RRule.GetValue()
+				m.UntilDate = m.VRule.Until
+			ELSE
+				m.UntilDate = .NULL.
+			ENDIF
 			IF m.DateStart > m.DaylightStart AND m.DateStart < m.Now
-				m.DayLight = m.TzComp
-				m.DaylightStart = m.DateStart
+				IF m.Now <= NVL(m.UntilDate, m.Now)
+					m.DayLight = m.TzComp
+					m.DaylightStart = m.DateStart
+				ELSE
+					m.Daylight = .NULL.
+					m.DaylightStart = {:}
+				ENDIF
 			ENDIF
 		ENDFOR
 

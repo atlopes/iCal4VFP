@@ -90,6 +90,7 @@ In iCalendar, components are container objects that integrate properties and, ev
 
 | Name  | Type  | Obs |
 | ------------ | ------------ | ------------ |
+| DST | L | Returns true if there is a DST defined for a given time |
 | NextSavingTimeChange | T | Returns the next time in which a saving time change will occur, for a given date |
 | ToLocalTime | T | Returns the local time corresponding to a given UTC time |
 | ToUTC | T | Returns the UTC time corresponding to a given local time |

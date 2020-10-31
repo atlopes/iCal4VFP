@@ -2,8 +2,6 @@
 *!*	|                                                                    |
 *!*	|    iCal4VFP                                                        |
 *!*	|                                                                    |
-*!*	|    Source and docs: https://bitbucket.org/atlopes/ical4vfp         |
-*!*	|                                                                    |
 *!*	+--------------------------------------------------------------------+
 
 *!*	iCalendar components sub-classes
@@ -149,6 +147,7 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 
 	_MemberData =	'<VFPData>' + ;
 							'<memberdata name="tzname" type="property" display="TzName"/>' + ;
+							'<memberdata name="dst" type="method" display="DST"/>' + ;
 							'<memberdata name="nextsavingtimechange" type="method" display="NextSavingTimeChange"/>' + ;
 							'<memberdata name="popsavingtime" type="method" display="PopSavingTime"/>' + ;
 							'<memberdata name="pushsavingtime" type="method" display="PushSavingTime"/>' + ;
@@ -229,6 +228,7 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 		LOCAL RRule AS iCalPropRRULE
 		LOCAL VRule AS iCalTypeRECUR
 		LOCAL Period AS Logical
+		LOCAL DST AS Logical 
 
 		* make sure we are working with datetimes
 		IF VARTYPE(m.RefTime) == "D"
@@ -247,16 +247,19 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 
 			* calculate the offset to UTC
 			m.OffsetTo =  0
-			m.ClosestDate = {^0001-01-01}
+			STORE {^0001-01-01} TO m.ClosestDate, m.ClosestStandardDate
 			This.TzName = ""
 			STORE .NULL. TO This.StartST, This.EndST
+			
+			* mark if there is a DST definition for the reference date
+			m.DST = This.DST(m.RefTime, !m.ToUTC)
 
 			FOR m.CompIndex = 1 TO This.GetICComponentsCount()
 
 				m.TzComp = This.GetICComponent(m.CompIndex)
 
-				* look for all STANDARD and DAYLIGHT definitions
-				IF m.TzComp.ICName == "STANDARD" OR m.TzComp.ICName == "DAYLIGHT"
+				* look for all STANDARD, and also DAYLIGHT (if the reference date is covered by DST)
+				IF m.TzComp.ICName == "STANDARD" OR (m.DST AND m.TzComp.ICName == "DAYLIGHT")
 
 					* get the date when this tz definition went in effect
 					m.RefDate = m.TzComp.GetICPropertyValue("DTSTART")
@@ -269,7 +272,7 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 						* if it has already passed, no need to check for it (it expired)
 						m.UntilDate = m.VRule.Until
 						* but if it didn't calculate the previous and next ST enforcement
-						IF ISNULL(m.UntilDate) OR YEAR(m.UntilDate) > YEAR(m.RefTime)
+						IF ISNULL(m.UntilDate) OR YEAR(m.UntilDate) >= YEAR(m.RefTime)
 							m.RRule.CalculatePeriod(m.RefDate, m.RefTime, .NULL., m.TzComp.GetICProperty("RDATE", -1), m.TzComp.GetICProperty("EXDATE", -1))
 							IF !ISNULL(m.RRule.PreviousDate)
 								m.RefDate = m.RRule.PreviousDate
@@ -437,6 +440,66 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 
 		* done, we found the nearest next saving time change
  		RETURN m.NextDate
+
+	ENDFUNC
+
+	* check if there is a DST definition for a given date
+	FUNCTION DST (RefTime AS Datetime, IsUTC AS Logical) AS Logical
+
+		SAFETHIS
+
+		ASSERT VARTYPE(m.RefTime) + VARTYPE(m.IsUTC) == "TL"
+
+		LOCAL CompIndex AS Integer
+		LOCAL TzComp AS iCalCompDAYLIGHT
+		LOCAL DaylightStart AS Datetime
+		LOCAL Datestart AS Datetime
+		LOCAL SetDates AS Integer
+		LOCAL AdditionalDate AS Datetime
+		LOCAL RRule AS iCalPropRRULE
+		LOCAL VRule AS iCalTypeRECUR
+		LOCAL UntilDate AS Datetime
+		LOCAL OffsetTo AS Integer
+
+		m.DaylightStart = {:}
+
+		* go through all DAYLIGHT components defined for the time zone
+		FOR m.CompIndex = 1 TO This.GetICComponentsCount("DAYLIGHT")
+
+			m.TzComp = This.GetICComponent("DAYLIGHT", m.CompIndex)
+			* when it started
+			m.DateStart = m.TzComp.GetICPropertyValue("DTSTART")
+			* get any additional date that moved the start date forward
+			FOR m.SetDates = 1 TO m.TzComp.GetICPropertiesCount("RDATE")
+				m.AdditionalDate = m.TzComp.GetICPropertyValue("RDATE", m.SetDates)
+				IF m.AdditionalDate > m.DateStart
+					m.DateStart = m.AdditionalDate
+				ENDIF
+			ENDFOR
+			* get an expiration date, if there is one
+			m.RRule = m.TzComp.GetICProperty("RRULE")
+			IF !ISNULL(m.RRule)
+				m.VRule = m.RRule.GetValue()
+				m.UntilDate = m.VRule.Until
+			ELSE
+				m.UntilDate = .NULL.
+			ENDIF
+			* adjust to the UTC offset
+			m.OffsetTo = m.TzComp.GetICPropertyValue("TZOFFSETTO") * IIF(m.IsUTC, 0, 60)
+			* if the start of the DST is before the reference date
+			IF m.DateStart > m.DaylightStart AND m.DateStart <= (m.RefTime + m.OffsetTo)
+				* and there is no expiration date
+				IF m.RefTime <= NVL(m.UntilDate, m.RefTime)
+					* mark this as the start
+					m.DaylightStart = m.DateStart
+				ELSE
+					* otherwise, there is no DST covering the reference date (so far)
+					m.DaylightStart = {:}
+				ENDIF
+			ENDIF
+		ENDFOR
+
+		RETURN !EMPTY(m.DaylightStart)
 
 	ENDFUNC
 
