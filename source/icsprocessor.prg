@@ -132,13 +132,18 @@ DEFINE CLASS ICSProcessor AS _iCalBase
 			m.HTTP.Open("Get", m.URL, .F.)
 			m.HTTP.Send()
 
-			* just get the response from the server
-			m.ICSResource = "" + m.HTTP.Responsebody
+			* success reading from the URL?
+			IF BETWEEN(m.HTTP.Status, 200, 299)
+				* just get the response from the server
+				m.ICSResource = "" + m.HTTP.Responsebody
 
-			m.HTTP = .NULL.
-	
-			* and continue to read from memory
-			m.Result = This.Read(m.ICSResource)
+				* and continue to read from memory
+				m.Result = This.Read(m.ICSResource)
+
+			* otherwise, signal failure
+			ELSE
+				m.Result = .NULL.
+			ENDIF
 	
 		CATCH TO m.Ops
 

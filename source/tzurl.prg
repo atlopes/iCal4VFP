@@ -511,9 +511,9 @@ DEFINE CLASS TzURL AS _iCalBase
 	ENDFUNC
 
 	* reads the complete timezone definition from TZURL.org, or from cache
-	FUNCTION Full (TzID AS String) AS iCalCompVTIMEZONE
+	FUNCTION Full (TzID AS String, StoredTz AS String) AS iCalCompVTIMEZONE
 
-		ASSERT VARTYPE(m.TzID) == "C"
+		ASSERT VARTYPE(m.TzID) == "C" AND (PCOUNT() = 1 OR VARTYPE(m.StoredTz) == "C")
 
 		LOCAL Timezone AS iCalCompVTIMEZONE
 		LOCAL ICS AS ICSProcessor
@@ -556,6 +556,11 @@ DEFINE CLASS TzURL AS _iCalBase
 			ENDIF
 		ENDIF
 
+		* if no iCalendar found, use the one the application stored, if there is one
+		IF ISNULL(m.iCal) AND PCOUNT() = 2
+			m.iCal = m.ICS.ReadFile(m.StoredTz)
+		ENDIF
+
 		* give up if an iCalendar .ics file could not be loaded
 		IF ISNULL(m.iCal)
 			RETURN .NULL.
@@ -569,7 +574,9 @@ DEFINE CLASS TzURL AS _iCalBase
 	ENDFUNC
 
 	* create a minimal timezone definition, to be used from current DATETIME() - disregard the historical information
-	FUNCTION Minimal (TzID AS String) AS iCalCompVTIMEZONE
+	FUNCTION Minimal (TzID AS String, StoredTz AS String) AS iCalCompVTIMEZONE
+
+		ASSERT VARTYPE(m.TzID) == "C" AND (PCOUNT() = 1 OR VARTYPE(m.StoredTz) == "C")
 
 		LOCAL Timezone AS iCalCompVTIMEZONE
 		LOCAL Minimal AS iCalCompVTIMEZONE
@@ -589,7 +596,11 @@ DEFINE CLASS TzURL AS _iCalBase
 		LOCAL AdditionalDate AS Datetime
 
 		* get the full definition
-		m.Timezone = This.Full(m.TzID)
+		IF PCOUNT() = 1
+			m.Timezone = This.Full(m.TzID)
+		ELSE
+			m.Timezone = This.Full(m.TzID, m.StoredTz)
+		ENDIF
 		IF ISNULL(m.Timezone)
 			RETURN .NULL.
 		ENDIF
