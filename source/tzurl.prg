@@ -556,9 +556,13 @@ DEFINE CLASS TzURL AS _iCalBase
 			ENDIF
 		ENDIF
 
-		* if no iCalendar found, use the one the application stored, if there is one
+		* if no iCalendar found, use the one that the application stored, if there is one
 		IF ISNULL(m.iCal) AND PCOUNT() = 2
-			m.iCal = m.ICS.ReadFile(m.StoredTz)
+			IF CHR(13) $ UPPER(m.StoredTz)
+				m.iCal = m.ICS.Read(m.StoredTz)
+			ELSE
+				m.iCal = m.ICS.ReadFile(m.StoredTz)
+			ENDIF
 		ENDIF
 
 		* give up if an iCalendar .ics file could not be loaded
