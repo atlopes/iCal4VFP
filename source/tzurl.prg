@@ -520,6 +520,7 @@ DEFINE CLASS TzURL AS _iCalBase
 		LOCAL iCal AS iCalendar
 		LOCAL LocalTz AS String
 		LOCAL SafetySetting AS String
+		LOCAL ARRAY IsFile[1]
 
 		* load the timezone definition into an iCalendar
 		m.ICS = CREATEOBJECT("ICSProcessor")
@@ -534,11 +535,17 @@ DEFINE CLASS TzURL AS _iCalBase
 		* Cache = 0 : read always from TzURL
 		* Cache < 0 : read always from cache, if available
 		* Cache > 0 : read from TzURL if file in cache older than Cache days, otherwise from cache, if available
-		IF This.Cache != 0
-			IF FILE(m.LocalTz) AND (This.Cache < 0 OR FDATE(m.LocalTz) + This.Cache >= DATE())
-				m.iCal = m.ICS.ReadFile(m.LocalTz)
+		TRY
+			IF This.Cache != 0
+				IF ADIR(m.IsFile, m.LocalTz) == 1
+					IF This.Cache < 0 OR FDATE(m.LocalTz) + This.Cache >= DATE()
+						m.iCal = m.ICS.ReadFile(m.LocalTz)
+					ENDIF
+				ENDIF
 			ENDIF
-		ENDIF
+		CATCH
+			m.iCal = .NULL.
+		ENDTRY
 
 		* no (recent) local copy? fetch from the URL
 		IF ISNULL(m.iCal)
