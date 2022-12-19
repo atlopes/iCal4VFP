@@ -29,6 +29,9 @@ ENDIF
 #DEFINE HOUR_IN_SECONDS		3600
 #DEFINE DAY_IN_SECONDS		86400
 #DEFINE WEEK_IN_SECONDS		604800
+#DEFINE DAYS_OF_WEEK			7
+#DEFINE MONTHS_OF_YEAR		12
+#DEFINE WEEKS_OF_YEAR		52
 
 DEFINE CLASS iCalPropACTION AS _iCalProperty
 
@@ -579,8 +582,8 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 
 		* a date to control the interval
 		m.ReCount = 1
-		* a safe date will be set as the starting point
-		m.Current = This.GetCurrentDate(m.Rule, m.Start)
+		* the starting point
+		m.Current = m.Start
 
 		* how is the date related to Timezones
 		* for the time part interval: check on saving time changes affecting the interval
@@ -659,12 +662,12 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 				m.YearPart = m.YearPart + m.Interval
 			CASE m.Rule.Freq == "MONTHLY"
 				m.MonthPart = m.MonthPart + m.Interval
-				IF m.MonthPart > 12
-					m.YearPart = m.YearPart + INT((m.MonthPart - 1) / 12)
-					m.MonthPart = (m.MonthPart - 1) % 12 + 1
+				IF m.MonthPart > MONTHS_OF_YEAR
+					m.YearPart = m.YearPart + INT((m.MonthPart - 1) / MONTHS_OF_YEAR)
+					m.MonthPart = (m.MonthPart - 1) % MONTHS_OF_YEAR + 1
 				ENDIF
 			CASE m.Rule.Freq == "WEEKLY"
-				m.DatePart = TTOD(m.Current) + 7 * m.Interval
+				m.DatePart = TTOD(m.Current) + DAYS_OF_WEEK * m.Interval
 				m.YearPart = YEAR(m.DatePart)
 				m.MonthPart = MONTH(m.DatePart)
 				m.DayPart = DAY(m.DatePart)
@@ -705,7 +708,11 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 
 			* the reference date for the next interval (unless we found eternity)
 			IF m.YearPart <= 9999
-				m.DatetimePart = DATETIME(m.YearPart, m.MonthPart, m.DayPart, m.HourPart, m.MinutePart, m.SecondPart)
+				IF m.Rule.Freq == "YEARLY" OR m.Rule.Freq == "MONTHLY"
+					m.DatetimePart = DATETIME(m.YearPart, m.MonthPart, MIN(m.DayPart, DAY(GOMONTH(DATE(m.YearPart, m.MonthPart, 1), 1) - 1)), m.HourPart, m.MinutePart, m.SecondPart)
+				ELSE
+					m.DatetimePart = DATETIME(m.YearPart, m.MonthPart, m.DayPart, m.HourPart, m.MinutePart, m.SecondPart)
+				ENDIF
 				m.Current = m.DatetimePart
 			ELSE
 				EXIT
@@ -829,12 +836,12 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 			m.FDWYear = DOW(m.FirstDay, m.FDWeek) + 1
 			m.CalcDate = m.FirstDay + (m.FDWeek - m.FDWYear)
 			IF m.FirstDay - m.CalcDate >= 4
-				m.CalcDate = m.CalcDate + 7
+				m.CalcDate = m.CalcDate + DAYS_OF_WEEK
 			ENDIF
-			IF DATE(YEAR(m.RefDate) + 1, 1, 1) - (m.CalcDate + 52 * 7) >= 4
-				m.NumberOfWeeks = 53
+			IF DATE(YEAR(m.RefDate) + 1, 1, 1) - (m.CalcDate + WEEKS_OF_YEAR * DAYS_OF_WEEK) >= 4
+				m.NumberOfWeeks = WEEKS_OF_YEAR + 1
 			ELSE
-				m.NumberOfWeeks = 52
+				m.NumberOfWeeks = WEEKS_OF_YEAR
 			ENDIF
 
 			m.FirstFourDaysWeek = DATETIME(YEAR(m.CalcDate), MONTH(m.CalcDate), DAY(m.CalcDate), HOUR(m.RefDate), MINUTE(m.RefDate), SEC(m.RefDate))
@@ -883,7 +890,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 				IF m.PosDay > 0
 					m.CalcDate = This.GetStartBasedDate(m.Start, DATE(YEAR(m.RefDate), 1, 1), 0, "RRRSSS") + DAY_IN_SECONDS * (m.PosDay - 1)
 				ELSE
-					m.CalcDate = This.GetStartBasedDate(m.Start, GOMONTH(DATE(YEAR(m.RefDate), 1, 1), 12), 0, "RRRSSS") + DAY_IN_SECONDS * m.PosDay
+					m.CalcDate = This.GetStartBasedDate(m.Start, GOMONTH(DATE(YEAR(m.RefDate), 1, 1), MONTHS_OF_YEAR), 0, "RRRSSS") + DAY_IN_SECONDS * m.PosDay
 				ENDIF
 				IF m.Rule.Freq == "YEARLY"
 					* expand
@@ -935,7 +942,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 						m.CalcDate = This.GetStartBasedDate(m.Start, m.RefDate, m.PosDay, "RRVSSS")
 					ELSE
 						m.CalcDate = This.GetStartBasedDate(m.Start, GOMONTH(DATE(YEAR(m.RefDate), MONTH(m.RefDate), 1), 1), 1, "RRVSSS")
-						m.CalcDate = m.CalcDate + 86400 * m.PosDay
+						m.CalcDate = m.CalcDate + DAY_IN_SECONDS * m.PosDay
 					ENDIF
 					* expand
 					IF m.Rule.Freq == "YEARLY" OR m.Rule.Freq == "MONTHLY"
@@ -1004,7 +1011,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 					m.CalcDate = This.GetStartBasedDate(m.Start, DATE(YEAR(m.RefDate), MONTH(m.RefDate), 1), 0, "RRRSSS")
 					m.PosWeek = VAL(This.ByDay(m.Entry))
 					m.DWeek = VAL(STREXTRACT("SU:1:MO:2:TU:3:WE:4:TH:5:FR:6:SA:7:", IIF(m.PosWeek != 0, RIGHT(This.ByDay(m.Entry), 2), This.ByDay(m.Entry)) + ":", ":"))
-					m.CalcDate = m.CalcDate + DAY_IN_SECONDS * IIF(m.DWeek >= DOW(m.CalcDate), m.DWeek - DOW(m.CalcDate), m.DWeek + 7 - DOW(m.CalcDate))
+					m.CalcDate = m.CalcDate + DAY_IN_SECONDS * IIF(m.DWeek >= DOW(m.CalcDate), m.DWeek - DOW(m.CalcDate), m.DWeek + DAYS_OF_WEEK - DOW(m.CalcDate))
 					IF m.PosWeek = 0
 						DO WHILE MONTH(m.CalcDate) = MONTH(m.RefDate)
 							IF This.ApplyByHour(m.Rule, m.Start, m.CalcDate, m.Dates)
@@ -1041,7 +1048,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 					m.CalcDate = This.GetStartBasedDate(m.Start, DATE(YEAR(m.RefDate), 1, 1), 0, "RRRSSS")
 					m.PosWeek = VAL(This.ByDay(m.Entry))
 					m.DWeek = VAL(STREXTRACT("SU:1:MO:2:TU:3:WE:4:TH:5:FR:6:SA:7:", IIF(m.PosWeek != 0, RIGHT(This.ByDay(m.Entry), 2), This.ByDay(m.Entry)) + ":", ":"))
-					m.CalcDate = m.CalcDate + DAY_IN_SECONDS * IIF(m.DWeek >= DOW(m.CalcDate), m.DWeek - DOW(m.CalcDate), m.DWeek + 7 - DOW(m.CalcDate))
+					m.CalcDate = m.CalcDate + DAY_IN_SECONDS * IIF(m.DWeek >= DOW(m.CalcDate), m.DWeek - DOW(m.CalcDate), m.DWeek + DAYS_OF_WEEK - DOW(m.CalcDate))
 					IF m.PosWeek = 0
 						DO WHILE YEAR(m.CalcDate) = YEAR(m.RefDate)
 							IF This.ApplyByHour(m.Rule, m.Start, m.CalcDate, m.Dates)
@@ -1056,7 +1063,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 						IF m.PosWeek > 0
 							m.CalcDate = m.CalcDate + WEEK_IN_SECONDS * (m.PosWeek - 1)
 						ELSE
-							m.CalcDate = m.CalcDate + WEEK_IN_SECONDS * 52
+							m.CalcDate = m.CalcDate + WEEK_IN_SECONDS * WEEKS_OF_YEAR
 							IF YEAR(m.CalcDate) != YEAR(m.RefDate)
 								m.CalcDate = m.CalcDate - WEEK_IN_SECONDS
 							ENDIF
@@ -1089,7 +1096,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 					m.CalcDate = DATETIME(YEAR(m.RefDate), MONTH(m.RefDate), 1, HOUR(m.RefDate), MINUTE(m.RefDate), SEC(m.RefDate))
 					m.PosWeek = VAL(This.ByDay(m.Entry))
 					m.DWeek = VAL(STREXTRACT("SU:1:MO:2:TU:3:WE:4:TH:5:FR:6:SA:7:", IIF(m.PosWeek != 0, RIGHT(This.ByDay(m.Entry), 2), This.ByDay(m.Entry)) + ":", ":"))
-					m.CalcDate = m.CalcDate + 86400 * IIF(m.DWeek >= DOW(m.CalcDate), m.DWeek - DOW(m.CalcDate), m.DWeek + 7 - DOW(m.CalcDate))
+					m.CalcDate = m.CalcDate + DAY_IN_SECONDS * IIF(m.DWeek >= DOW(m.CalcDate), m.DWeek - DOW(m.CalcDate), m.DWeek + DAYS_OF_WEEK - DOW(m.CalcDate))
 					IF m.PosWeek = 0
 						DO WHILE MONTH(m.CalcDate) = MONTH(m.RefDate)
 							IF This.ApplyByHour(m.Rule, m.Start, m.CalcDate, m.Dates)
@@ -1124,8 +1131,8 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 			CASE m.Rule.Freq == "WEEKLY"
 				* expand
 				m.FDWeek = VAL(STREXTRACT("SU:1:MO:2:TU:3:WE:4:TH:5:FR:6:SA:7:", NVL(m.Rule.WkSt, "MO") + ":", ":"))
-				m.CalcDate = m.RefDate - 86400 * (DOW(m.RefDate, m.FDWeek) - 1)
-				FOR m.Entry = 1 TO 7
+				m.CalcDate = m.RefDate - DAY_IN_SECONDS * (DOW(m.RefDate, m.FDWeek) - 1)
+				FOR m.Entry = 1 TO DAYS_OF_WEEK
 					IF ASCAN(This.ByDay, SUBSTR(":SUMOTUWETHFRSA", DOW(m.CalcDate) * 2, 2)) != 0
 						IF This.ApplyByHour(m.Rule, m.Start, m.CalcDate, m.Dates)
 							IF m.Dates.GetKey(TTOC(m.CalcDate, 1)) = 0
@@ -1282,18 +1289,6 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 			ENDIF
 		ENDIF
 
-	ENDFUNC
-
-	* get a safe starting interval date (next dates will always be valid)
-	HIDDEN FUNCTION GetCurrentDate (Rule AS iCalTypeRECUR, Start AS Datetime)
-
-		LOCAL MonthPart, DayPart AS Integer
-
-		m.MonthPart = IIF(!m.Rule.Freq == "YEARLY", MONTH(m.Start), 1)
-		m.DayPart = IIF(m.Rule.Freq == "YEARLY" OR m.Rule.Freq == "MONTHLY", 1, DAY(m.Start))
-
-		RETURN DATETIME(YEAR(m.Start), m.MonthPart, m.DayPart, HOUR(m.Start), MINUTE(m.Start), SEC(m.Start))
-		
 	ENDFUNC
 
 	* get a date based on a combination of start date, reference date, and designated value parts
