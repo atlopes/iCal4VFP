@@ -25,7 +25,7 @@ iCal4VFP may be used either by managing iCalendar VFP objects, or by processing 
 
 ## Dependencies
 
-iCal4VFP depends on [tokenizer](https://bitbucket.org/atlopes/tokenizer "tokenizer"), a class to extract tokens from a text.
+iCal4VFP depends on [tokenizer](https://github.com/atlopes/tokenizer "tokenizer"), a class to extract tokens from a text.
 
 ## License
 

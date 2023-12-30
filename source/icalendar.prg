@@ -2,8 +2,6 @@
 *!*	|                                                                    |
 *!*	|    iCal4VFP                                                        |
 *!*	|                                                                    |
-*!*	|    Source and docs: https://bitbucket.org/atlopes/ical4vfp         |
-*!*	|                                                                    |
 *!*	+--------------------------------------------------------------------+
 
 *!*	iCalendar VFP classes
@@ -1588,9 +1586,12 @@ DEFINE CLASS _iCalBase AS Custom
 		LOCAL SysTime_Structure AS String
 
 		m.SysTime_Structure = SPACE(16)
-		DECLARE GetSystemTime IN WIN32API AS _iCalAPIGetSystemTime STRING @SYSTEMTIME
-		_iCalAPIGetSystemTime(@m.SysTime_Structure)
-		CLEAR DLLS "_iCalAPIGetSystemTime"
+		TRY
+			_iCalAPIGetSystemTime(@m.SysTime_Structure)
+		CATCH
+			DECLARE GetSystemTime IN WIN32API AS _iCalAPIGetSystemTime STRING @SYSTEMTIME
+			_iCalAPIGetSystemTime(@m.SysTime_Structure)
+		ENDTRY
 
 		RETURN DATETIME(CTOBIN(SUBSTR(m.SysTime_Structure, 1, 2), "2RS"), ;
 							CTOBIN(SUBSTR(m.SysTime_Structure, 3, 2), "2RS"), ;

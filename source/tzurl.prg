@@ -2,8 +2,6 @@
 *!*	|                                                                    |
 *!*	|    iCal4VFP                                                        |
 *!*	|                                                                    |
-*!*	|    Source and docs: https://bitbucket.org/atlopes/ical4vfp         |
-*!*	|                                                                    |
 *!*	+--------------------------------------------------------------------+
 
 *!*	a VFP class to use the TzURL timezone data at http://www.tzurl.org
@@ -652,7 +650,7 @@ DEFINE CLASS TzURL AS _iCalBase
 						m.FallbackStandard = m.Standard
 					ENDIF
 					m.Standard = .NULL.
-					m.StandardStart = {:}
+					m.StandardStart = {/:}
 				ENDIF
 			ENDIF
 		ENDFOR
@@ -684,7 +682,7 @@ DEFINE CLASS TzURL AS _iCalBase
 					m.DaylightStart = m.DateStart
 				ELSE
 					m.Daylight = .NULL.
-					m.DaylightStart = {:}
+					m.DaylightStart = {/:}
 				ENDIF
 			ENDIF
 		ENDFOR
