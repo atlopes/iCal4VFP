@@ -548,7 +548,7 @@ DEFINE CLASS TzURL AS _iCalBase
 		* no (recent) local copy? fetch from the URL
 		IF ISNULL(m.iCal)
 			IF This.Timezones.GetKey(m.TzID) != 0
-				m.iCal = m.ICS.ReadURL("http://tzurl.org/zoneinfo/" + This.Timezones.Item(m.TzID) + ".ics")
+				m.iCal = m.ICS.ReadURL("https://www.tzurl.org/zoneinfo/" + This.Timezones.Item(m.TzID) + ".ics")
 				* but save it for later if we are working with cache
 				IF !ISNULL(m.iCal) AND This.Cache != 0
 					m.SafetySetting = SET("Safety")
@@ -562,8 +562,8 @@ DEFINE CLASS TzURL AS _iCalBase
 		ENDIF
 
 		* if no iCalendar found, use the one that the application stored, if there is one
-		IF ISNULL(m.iCal) AND PCOUNT() = 2
-			IF CHR(13) $ UPPER(m.StoredTz)
+		IF ISNULL(m.iCal) AND PCOUNT() == 2
+			IF CHR(13) $ m.StoredTz
 				m.iCal = m.ICS.Read(m.StoredTz)
 			ELSE
 				m.iCal = m.ICS.ReadFile(m.StoredTz)
