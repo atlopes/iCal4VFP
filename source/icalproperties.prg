@@ -515,13 +515,15 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 
 		SAFETHIS
 
-		ASSERT VARTYPE(m.Start) $ "DT" AND VARTYPE(m.Finish) $ "DT" AND VARTYPE(m.TZ) $ "OX" AND VARTYPE(m.AddDates) $ "OX" AND VARTYPE(m.ExceptDates) $ "OX" AND VARTYPE(m.CalcNext) == "L"
+		ASSERT VARTYPE(m.Start) $ "DTX" AND VARTYPE(m.Finish) $ "DT" AND VARTYPE(m.TZ) $ "OX" AND VARTYPE(m.AddDates) $ "OX" AND VARTYPE(m.ExceptDates) $ "OX" AND VARTYPE(m.CalcNext) == "L"
 
 		LOCAL Rule AS iCalTypeRECUR
 		LOCAL ReCursor AS String
 		LOCAL TempDates AS Collection
 		LOCAL ReCount AS Integer
 		LOCAL Current AS Datetime
+		LOCAL DtStart AS Datetime
+		LOCAL ImplicitStart AS Logical
 		LOCAL Until AS Datetime
 		LOCAL Interval AS Integer
 		LOCAL STUsage AS Logical
@@ -581,7 +583,14 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 		* a date to control the interval
 		m.ReCount = 1
 		* the starting point
-		m.Current = m.Start
+		IF ISNULL(EVL(m.Start, .NULL.))
+			m.ImplicitStart = .T.
+			m.Current = DATETIME()
+		ELSE
+			m.ImplicitStart = .F.
+			m.Current = IIF(VARTYPE(m.Start) == "D", DTOT(m.Start), m.Start)
+		ENDIF
+		m.DtStart = m.Current
 
 		* how is the date related to Timezones
 		* for the time part interval: check on saving time changes affecting the interval
@@ -613,16 +622,16 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 				AND m.ReCount <= NVL(m.Rule.Count, ICAL_ETERNITY) ;
 				AND (ISNULL(m.Until) OR m.Current <= m.Until)
 
-			* the start date will always be part of the date series
-			IF RECCOUNT(m.ReCursor) = 0
+			* a given start date will always be part of the date series
+			IF RECCOUNT(m.ReCursor) = 0 AND ! m.ImplicitStart
 				m.TempDates.Add(m.Start, TTOC(m.Start, 1))
 			ENDIF
 
 			* apply the By part rules, starting from the ByMonth part
 			IF !ISNULL(m.DatetimePart) AND !EMPTY(m.DatetimePart)
-				This.ApplyByMonth(m.Rule, m.Start, m.DatetimePart, m.TempDates)
+				This.ApplyByMonth(m.Rule, m.DtStart, m.DatetimePart, m.TempDates)
 				* and also the case where there are no By part rules
-				This.ApplyNoBy(m.Rule, m.Start, m.DatetimePart, m.TempDates)
+				This.ApplyNoBy(m.Rule, m.DtStart, m.DatetimePart, m.TempDates)
 			ENDIF
 
 			* get the dates in order from the collection of dates determined for the interval
@@ -635,7 +644,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 				IF ISNULL(m.Rule.BySetPos) ;
 						OR ASCAN(This.BySetPos, m.StepIndex) != 0 ;
 						OR ASCAN(This.BySetPos, -((m.TempDates.Count + 1) - m.StepIndex)) != 0
-					IF m.DatetimePart >= m.Start
+					IF m.DatetimePart >= m.DtStart
 						IF !ISNULL(m.NextSavingTime) AND m.DatetimePart > m.NextSavingTime
 							m.TZ.PushSavingTime()
 							m.NextSavingTime = m.TZ.NextSavingTimeChange(m.DatetimePart, .T.)
@@ -680,7 +689,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 					m.DatetimePart = m.Current + HOUR_IN_SECONDS * m.Interval
 				CASE m.Rule.Freq == "MINUTELY"
 					m.DatetimePart = m.Current + MINUTE_IN_SECONDS * m.Interval
-				CASE m.Rule.Freq == "SECONDELY"
+				CASE m.Rule.Freq == "SECONDLY"
 					m.DatetimePart = m.Current + m.Interval
 				OTHERWISE
 					EXIT
