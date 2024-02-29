@@ -386,7 +386,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 	ENDFUNC
 
 	* calculate the previous date of a recurrent event
-	FUNCTION CalculatePrevious (Start AS Datetime, Finish AS Datetime, TZ AS iCalCompTIMEZONE, AddDates AS iCalPropRDATE, Exceptions AS iCalPropEXDATE)
+	FUNCTION CalculatePrevious (Start AS Datetime, Finish AS Datetime, TZ AS iCalCompTIMEZONE, AddDates AS iCalPropRDATE, Exceptions AS iCalPropEXDATE) AS Datetime
 
 		SAFETHIS
 
@@ -408,14 +408,23 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 		This.PreviousDate = .NULL.
 
 		m.CalcCursor = This.Calculator(m.Start, m.Finish, m.TZ, m.AddDates, m.Exceptions, .F.)
-		SELECT LocalTime, TzName FROM (m.CalcCursor) WHERE LocalTime = (SELECT MAX(LocalTime) FROM (m.CalcCursor) WHERE LocalTime <= m.Finish) INTO ARRAY PreviousDate
+		IF ! ISNULL(m.CalcCursor)
 
-		IF _Tally = 1
-			This.PreviousDate = m.PreviousDate(1, 1)
-			This.PreviousTzName = NVL(m.PreviousDate(1, 2), "")
+			SELECT LocalTime, TzName FROM (m.CalcCursor) WHERE LocalTime = (SELECT MAX(LocalTime) FROM (m.CalcCursor) WHERE LocalTime <= m.Finish) INTO ARRAY PreviousDate
+
+			IF _Tally == 1
+				This.PreviousDate = m.PreviousDate[1, 1]
+				This.PreviousTzName = NVL(m.PreviousDate[1, 2], "")
+			ENDIF
+
+			USE IN (m.CalcCursor)
+
+		ELSE
+
+			This.PreviousDate = .NULL.
+			This.PreviousTzName = ""
+
 		ENDIF
-
-		USE IN (m.CalcCursor)
 
 		IF !ISNULL(m.TZ)
 			m.TZ.PopSavingTime()
@@ -431,7 +440,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 		SAFETHIS
 
 		LOCAL CalcCursor AS String
-		LOCAL ARRAY LimitDates(1)
+		LOCAL ARRAY LimitDates[1]
 
 		IF PCOUNT() = 2
 			m.TZ = .NULL.
@@ -449,24 +458,34 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 		This.NextDate = .NULL.
 
 		m.CalcCursor = This.Calculator(m.Start, m.Finish, m.TZ, m.AddDates, m.Exceptions, .T.)
-		SELECT LocalTime, TzName FROM (m.CalcCursor) WHERE LocalTime = (SELECT MAX(LocalTime) FROM (m.CalcCursor) WHERE LocalTime <= m.Finish) ;
-		UNION ALL ;
-		SELECT LocalTime, TzName FROM (m.CalcCursor) WHERE LocalTime = (SELECT MIN(LocalTime) FROM (m.CalcCursor) WHERE LocalTime > m.Finish) ;
-		ORDER BY 1 ;
-		INTO ARRAY LimitDates
 
-		IF _Tally = 2
-			This.PreviousDate = m.LimitDates(1, 1)
-			This.PreviousTzName = NVL(m.LimitDates(1, 2), "")
-			This.NextDate = m.LimitDates(2, 1)
-			This.NextTzName = NVL(m.LimitDates(2, 2), "")
+		IF ! ISNULL(m.CalcCursor)
+
+			SELECT LocalTime, TzName FROM (m.CalcCursor) WHERE LocalTime = (SELECT MAX(LocalTime) FROM (m.CalcCursor) WHERE LocalTime <= m.Finish) ;
+			UNION ALL ;
+			SELECT LocalTime, TzName FROM (m.CalcCursor) WHERE LocalTime = (SELECT MIN(LocalTime) FROM (m.CalcCursor) WHERE LocalTime > m.Finish) ;
+			ORDER BY 1 ;
+			INTO ARRAY LimitDates
+
+			IF _Tally == 2
+				This.PreviousDate = m.LimitDates[1, 1]
+				This.PreviousTzName = NVL(m.LimitDates[1, 2], "")
+				This.NextDate = m.LimitDates[2, 1]
+				This.NextTzName = NVL(m.LimitDates[2, 2], "")
+			ENDIF
+
+			USE IN (m.CalcCursor)
+
+		ELSE
+
+			STORE .NULL. TO This.PreviousDate, This.NextDate
+			STORE "" TO This.PreviousTzName, This.NextTzName
+
 		ENDIF
 
 		IF !ISNULL(m.TZ)
 			m.TZ.PopSavingTime()
 		ENDIF
-
-		USE IN (m.CalcCursor)
 
 	ENDFUNC
 
@@ -476,7 +495,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 		SAFETHIS
 
 		LOCAL CalcCursor AS String
-		LOCAL ARRAY NextDate(1)
+		LOCAL ARRAY NextDate[1]
 
 		IF PCOUNT() = 2
 			m.TZ = .NULL.
@@ -493,14 +512,23 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 		This.NextDate = .NULL.
 
 		m.CalcCursor = This.Calculator(m.Start, m.Finish, m.TZ, m.AddDates, m.Exceptions, .T.)
-		SELECT LocalTime, TzName FROM (m.CalcCursor) WHERE LocalTime = (SELECT MIN(LocalTime) FROM (m.CalcCursor) WHERE LocalTime > m.Finish) INTO ARRAY NextDate
+		IF ! ISNULL(m.CalcCursor)
 
-		IF _Tally = 1
-			This.NextDate = m.NextDate(1, 1)
-			This.NextTzName = NVL(m.NextDate(1, 2), "")
+			SELECT LocalTime, TzName FROM (m.CalcCursor) WHERE LocalTime = (SELECT MIN(LocalTime) FROM (m.CalcCursor) WHERE LocalTime > m.Finish) INTO ARRAY NextDate
+
+			IF _Tally == 1
+				This.NextDate = m.NextDate[1, 1]
+				This.NextTzName = NVL(m.NextDate[1, 2], "")
+			ENDIF
+
+			USE IN (m.CalcCursor)
+
+		ELSE
+
+			This.NextDate = .NULL.
+			This.NextTzName = ""
+
 		ENDIF
-
-		USE IN (m.CalcCursor)
 
 		IF !ISNULL(m.TZ)
 			m.TZ.PopSavingTime()
@@ -547,6 +575,9 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 
 		* get the rule definitions in a comfortable manner
 		m.Rule = This.GetValue()
+		IF ISNULL(m.Rule)
+			RETURN .NULL.		&& failure to get the recurrence rule
+		ENDIF
 		This.RuleCollectionToArray("ByMonth", m.Rule.ByMonth)
 		This.RuleCollectionToArray("ByWeekNo", m.Rule.ByWeekNo)
 		This.RuleCollectionToArray("ByYearDay", m.Rule.ByYearDay)
