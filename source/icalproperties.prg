@@ -810,13 +810,10 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 
 	* refer to RFC 5545 for documentation
 
-	HIDDEN FUNCTION ApplyByMonth (Rule AS iCalTypeRECUR, Start AS Datetime, RefDate AS Datetime, Dates AS Collection) AS Logical
+	HIDDEN FUNCTION ApplyByMonth (Rule AS iCalTypeRECUR, Start AS Datetime, RefDate AS Datetime, Dates AS Collection)
 
 		LOCAL CalcDate AS Datetime
 		LOCAL Entry AS Integer
-		LOCAL Accepted AS Logical
-
-		m.Accepted = .F.
 
 		* rule set?
 		IF !ISNULL(m.Rule.ByMonth)
@@ -824,29 +821,25 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 			IF m.Rule.Freq == "YEARLY"
 				FOR m.Entry = 1 TO ALEN(This.ByMonth)
 					m.CalcDate = This.GetStartBasedDate(m.Start, m.RefDate, This.ByMonth(m.Entry), "RVSSSS")
-					IF !EMPTY(m.CalcDate) AND This.ApplyByWeekNo(m.Rule, m.Start, m.CalcDate, m.Dates)
-						m.Accepted = .T.
+					IF !EMPTY(m.CalcDate)
+						This.ApplyByWeekNo(m.Rule, m.Start, m.CalcDate, m.Dates)
 					ENDIF
 				ENDFOR
 			ELSE
 			* limit
 				m.CalcDate = This.GetStartBasedDate(m.Start, m.RefDate, 0, "RRRSSS")
 				IF ASCAN(This.ByMonth, MONTH(m.CalcDate)) != 0
-					IF This.ApplyByWeekNo(m.Rule, m.Start, m.CalcDate, m.Dates)
-						m.Accepted = .T.
-					ENDIF
+					This.ApplyByWeekNo(m.Rule, m.Start, m.CalcDate, m.Dates)
 				ENDIF
 			ENDIF
 		ELSE
 			* rule not set? pass to next rule
-			m.Accepted = This.ApplyByWeekNo(m.Rule, m.Start, m.RefDate, m.Dates)
+			This.ApplyByWeekNo(m.Rule, m.Start, m.RefDate, m.Dates)
 		ENDIF
-
-		RETURN m.Accepted
 
 	ENDFUNC
 
-	HIDDEN FUNCTION ApplyByWeekNo (Rule AS iCalTypeRECUR, Start AS Datetime, RefDate AS Datetime, Dates AS Collection) AS Logical
+	HIDDEN FUNCTION ApplyByWeekNo (Rule AS iCalTypeRECUR, Start AS Datetime, RefDate AS Datetime, Dates AS Collection)
 
 		LOCAL CalcDate AS Datetime
 		LOCAL Entry AS Integer
@@ -857,9 +850,6 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 		LOCAL FirstDay AS Date
 		LOCAL NumberOfWeeks AS Integer
 		LOCAL WeekNo AS Integer
-		LOCAL Accepted AS Logical
-
-		m.Accepted = .F.
 
 		* rule set?
 		IF !ISNULL(m.Rule.ByWeekNo) AND m.Rule.Freq == "YEARLY"
@@ -887,30 +877,23 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 					ENDIF
 					m.CalcDate = m.FirstFourDaysWeek + (m.WeekNo - 1) * WEEK_IN_SECONDS
 					FOR m.DayInWeek = 0 TO 6
-						IF This.ApplyByYearDay(m.Rule, m.Start, m.CalcDate, m.Dates)
-							m.Accepted = .T.
-						ENDIF
+						This.ApplyByYearDay(m.Rule, m.Start, m.CalcDate, m.Dates)
 						m.CalcDate = m.CalcDate + DAY_IN_SECONDS
 					ENDFOR
 				ENDIF
 			ENDFOR
 		ELSE
 			* rule not set? pass to next rule
-			m.Accepted = This.ApplyByYearDay(m.Rule, m.Start, m.RefDate, m.Dates)
+			This.ApplyByYearDay(m.Rule, m.Start, m.RefDate, m.Dates)
 		ENDIF
-
-		RETURN m.Accepted
 
 	ENDFUNC
 
-	HIDDEN FUNCTION ApplyByYearDay (Rule AS iCalTypeRECUR, Start AS Datetime, RefDate AS Datetime, Dates AS Collection) AS Logical
+	HIDDEN FUNCTION ApplyByYearDay (Rule AS iCalTypeRECUR, Start AS Datetime, RefDate AS Datetime, Dates AS Collection) 
 
 		LOCAL CalcDate AS Datetime
 		LOCAL Entry AS Integer
 		LOCAL PosDay AS Integer
-		LOCAL Accepted AS Logical
-
-		m.Accepted = .F.
 
 		* rule set?
 		IF !ISNULL(m.Rule.ByYearDay)
@@ -924,37 +907,28 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 				ENDIF
 				IF m.Rule.Freq == "YEARLY"
 					* expand
-					IF YEAR(m.CalcDate) = YEAR(m.RefDate)
-						IF This.ApplyByMonthDay(m.Rule, m.Start, m.CalcDate, m.Dates)
-							m.Accepted = .T.
-						ENDIF
+					IF YEAR(m.CalcDate) == YEAR(m.RefDate)
+						This.ApplyByMonthDay(m.Rule, m.Start, m.CalcDate, m.Dates)
 					ENDIF
 				ELSE
 					* limit
 					IF m.CalcDate = m.RefDate
-						IF This.ApplyByMonthDay(m.Rule, m.Start, m.CalcDate, m.Dates)
-							m.Accepted = .T.
-						ENDIF
+						This.ApplyByMonthDay(m.Rule, m.Start, m.CalcDate, m.Dates)
 					ENDIF
 				ENDIF
 			ENDFOR
 		ELSE
 			* rule not set? pass to next rule
-			m.Accepted = This.ApplyByMonthDay(m.Rule, m.Start, m.RefDate, m.Dates)
+			This.ApplyByMonthDay(m.Rule, m.Start, m.RefDate, m.Dates)
 		ENDIF
-
-		RETURN m.Accepted
 
 	ENDFUNC
 
-	HIDDEN FUNCTION ApplyByMonthDay (Rule AS iCalTypeRECUR, Start AS Datetime, RefDate AS Datetime, Dates AS Collection) AS Logical
+	HIDDEN FUNCTION ApplyByMonthDay (Rule AS iCalTypeRECUR, Start AS Datetime, RefDate AS Datetime, Dates AS Collection)
 
 		LOCAL CalcDate AS Datetime
 		LOCAL Entry AS Integer
 		LOCAL PosDay AS Integer
-		LOCAL Accepted AS Logical
-
-		m.Accepted = .F.
 
 		* rule set?
 		IF !ISNULL(m.Rule.ByMonthDay)
@@ -971,16 +945,12 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 					* expand
 					IF m.Rule.Freq == "YEARLY" OR m.Rule.Freq == "MONTHLY"
 						IF MONTH(m.CalcDate) = MONTH(m.RefDate)
-							IF This.ApplyByDay(m.Rule, m.Start, m.CalcDate, m.Dates)
-								m.Accepted = .T.
-							ENDIF
+							This.ApplyByDay(m.Rule, m.Start, m.CalcDate, m.Dates)
 						ENDIF
 					ELSE
 					* limit
 						IF m.CalcDate = m.RefDate
-							IF This.ApplyByDay(m.Rule, m.Start, m.CalcDate, m.Dates)
-								m.Accepted = .T.
-							ENDIF
+							This.ApplyByDay(m.Rule, m.Start, m.CalcDate, m.Dates)
 						ENDIF
 					ENDIF
 				CATCH
@@ -988,14 +958,12 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 			ENDFOR
 		ELSE
 			* rule not set? pass to next rule
-			m.Accepted = This.ApplyByDay(m.Rule, m.Start, m.RefDate, m.Dates)
+			This.ApplyByDay(m.Rule, m.Start, m.RefDate, m.Dates)
 		ENDIF
-
-		RETURN m.Accepted
 
 	ENDFUNC
 
-	HIDDEN FUNCTION ApplyByDay (Rule AS iCalTypeRECUR, Start AS Datetime, RefDate AS Datetime, Dates AS Collection) AS Logical
+	HIDDEN FUNCTION ApplyByDay (Rule AS iCalTypeRECUR, Start AS Datetime, RefDate AS Datetime, Dates AS Collection)
 
 		LOCAL TempDate AS Datetime
 		LOCAL CalcDate AS Datetime
@@ -1003,9 +971,6 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 		LOCAL FDWeek AS Integer
 		LOCAL DWeek AS Integer
 		LOCAL PosWeek AS Integer
-		LOCAL Accepted AS Logical
-
-		m.Accepted = .F.
 
 		* rule set?
 		IF !ISNULL(m.Rule.ByDay)
@@ -1016,9 +981,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 				* limit
 				m.CalcDate = This.GetStartBasedDate(m.Start, m.RefDate, 0, "RRRSSS")
 				IF ASCAN(This.ByDay, SUBSTR(":SUMOTUWETHFRSA", DOW(m.CalcDate) * 2, 2)) != 0
-					IF This.ApplyByHour(m.Rule, m.Start, m.CalcDate, m.Dates)
-						m.Accepted = .T.
-					ENDIF
+					This.ApplyByHour(m.Rule, m.Start, m.CalcDate, m.Dates)
 				ENDIF
 
 			CASE m.Rule.Freq == "YEARLY" AND !ISNULL(m.Rule.ByMonth)
@@ -1029,10 +992,8 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 					m.DWeek = VAL(STREXTRACT("SU:1:MO:2:TU:3:WE:4:TH:5:FR:6:SA:7:", IIF(m.PosWeek != 0, RIGHT(This.ByDay(m.Entry), 2), This.ByDay(m.Entry)) + ":", ":"))
 					m.CalcDate = m.CalcDate + DAY_IN_SECONDS * IIF(m.DWeek >= DOW(m.CalcDate), m.DWeek - DOW(m.CalcDate), m.DWeek + DAYS_OF_WEEK - DOW(m.CalcDate))
 					IF m.PosWeek = 0
-						DO WHILE MONTH(m.CalcDate) = MONTH(m.RefDate)
-							IF This.ApplyByHour(m.Rule, m.Start, m.CalcDate, m.Dates)
-								m.Accepted = .T.
-							ENDIF
+						DO WHILE MONTH(m.CalcDate) == MONTH(m.RefDate)
+							This.ApplyByHour(m.Rule, m.Start, m.CalcDate, m.Dates)
 							m.CalcDate = m.CalcDate + WEEK_IN_SECONDS
 						ENDDO
 					ELSE
@@ -1045,10 +1006,8 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 							ENDIF
 							m.CalcDate = m.CalcDate - WEEK_IN_SECONDS * ABS(m.PosWeek + 1)
 						ENDIF
-						IF MONTH(m.CalcDate) = MONTH(m.RefDate)
-							IF This.ApplyByHour(m.Rule, m.Start, m.CalcDate,m.Dates)
-								m.Accepted = .T.
-							ENDIF
+						IF MONTH(m.CalcDate) == MONTH(m.RefDate)
+							This.ApplyByHour(m.Rule, m.Start, m.CalcDate,m.Dates)
 						ENDIF
 					ENDIF
 				ENDFOR
@@ -1063,9 +1022,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 					m.CalcDate = m.CalcDate + DAY_IN_SECONDS * IIF(m.DWeek >= DOW(m.CalcDate), m.DWeek - DOW(m.CalcDate), m.DWeek + DAYS_OF_WEEK - DOW(m.CalcDate))
 					IF m.PosWeek = 0
 						DO WHILE YEAR(m.CalcDate) = YEAR(m.RefDate)
-							IF This.ApplyByHour(m.Rule, m.Start, m.CalcDate, m.Dates)
-								m.Accepted = .T.
-							ENDIF
+							This.ApplyByHour(m.Rule, m.Start, m.CalcDate, m.Dates)
 							m.CalcDate = m.CalcDate + WEEK_IN_SECONDS
 						ENDDO
 					ELSE
@@ -1078,10 +1035,8 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 							ENDIF
 							m.CalcDate = m.CalcDate - WEEK_IN_SECONDS * ABS(m.PosWeek + 1)
 						ENDIF
-						IF YEAR(m.CalcDate) = YEAR(m.RefDate)
-							IF This.ApplyByHour(m.Rule, m.Start, m.CalcDate,m.Dates)
-								m.Accepted = .T.
-							ENDIF
+						IF YEAR(m.CalcDate) == YEAR(m.RefDate)
+							This.ApplyByHour(m.Rule, m.Start, m.CalcDate,m.Dates)
 						ENDIF
 					ENDIF
 				ENDFOR
@@ -1089,9 +1044,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 			CASE m.Rule.Freq == "MONTHLY" AND !ISNULL(m.Rule.ByMonthDay)
 				* limit
 				IF ASCAN(This.ByDay, SUBSTR(":SUMOTUWETHFRSA", DOW(m.RefDate) * 2, 2)) != 0
-					IF This.ApplyByHour(m.Rule, m.Start, m.RefDate, m.Dates)
-						m.Accepted = .T.
-					ENDIF
+					This.ApplyByHour(m.Rule, m.Start, m.RefDate, m.Dates)
 				ENDIF
 
 			CASE m.Rule.Freq == "MONTHLY"
@@ -1103,9 +1056,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 					m.CalcDate = m.CalcDate + DAY_IN_SECONDS * IIF(m.DWeek >= DOW(m.CalcDate), m.DWeek - DOW(m.CalcDate), m.DWeek + DAYS_OF_WEEK - DOW(m.CalcDate))
 					IF m.PosWeek = 0
 						DO WHILE MONTH(m.CalcDate) = MONTH(m.RefDate)
-							IF This.ApplyByHour(m.Rule, m.Start, m.CalcDate, m.Dates)
-								m.Accepted = .T.
-							ENDIF
+							This.ApplyByHour(m.Rule, m.Start, m.CalcDate, m.Dates)
 							m.CalcDate = m.CalcDate + WEEK_IN_SECONDS
 						ENDDO
 					ELSE
@@ -1119,9 +1070,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 							m.CalcDate = m.CalcDate - WEEK_IN_SECONDS * ABS(m.PosWeek + 1)
 						ENDIF
 						IF MONTH(m.CalcDate) = MONTH(m.RefDate)
-							IF This.ApplyByHour(m.Rule, m.Start, m.CalcDate, m.Dates)
-								m.Accepted = .T.
-							ENDIF
+							This.ApplyByHour(m.Rule, m.Start, m.CalcDate, m.Dates)
 						ENDIF
 					ENDIF
 				ENDFOR
@@ -1132,9 +1081,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 				m.CalcDate = m.RefDate - DAY_IN_SECONDS * (DOW(m.RefDate, m.FDWeek) - 1)
 				FOR m.Entry = 1 TO DAYS_OF_WEEK
 					IF ASCAN(This.ByDay, SUBSTR(":SUMOTUWETHFRSA", DOW(m.CalcDate) * 2, 2)) != 0
-						IF This.ApplyByHour(m.Rule, m.Start, m.CalcDate, m.Dates)
-							m.Accepted = .T.
-						ENDIF
+						This.ApplyByHour(m.Rule, m.Start, m.CalcDate, m.Dates)
 					ENDIF
 					m.CalcDate = m.CalcDate + DAY_IN_SECONDS
 				ENDFOR
@@ -1143,97 +1090,72 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 				* limit
 				m.CalcDate = This.GetStartBasedDate(m.Start, m.RefDate, 0, "RRRSSS")
 				IF ASCAN(This.ByDay, SUBSTR(":SUMOTUWETHFRSA", DOW(m.CalcDate) * 2, 2)) != 0
-					IF This.ApplyByHour(m.Rule, m.Start, m.CalcDate, m.Dates)
-						m.Accepted = .T.
-					ENDIF
+					This.ApplyByHour(m.Rule, m.Start, m.CalcDate, m.Dates)
 				ENDIF
 			ENDCASE
 		ELSE
 			* rule not set? pass to next rule
-			m.Accepted = This.ApplyByHour(m.Rule, m.Start, m.RefDate, m.Dates)
+			This.ApplyByHour(m.Rule, m.Start, m.RefDate, m.Dates)
 		ENDIF
-
-		RETURN m.Accepted
 
 	ENDFUNC
 
-	HIDDEN FUNCTION ApplyByHour (Rule AS iCalTypeRECUR, Start AS Datetime, RefDate AS Datetime, Dates AS Collection) AS Logical
+	HIDDEN FUNCTION ApplyByHour (Rule AS iCalTypeRECUR, Start AS Datetime, RefDate AS Datetime, Dates AS Collection)
 
 		LOCAL CalcDate AS Datetime
 		LOCAL Entry AS Integer
-		LOCAL Accepted AS Logical
-
-		m.Accepted = .F.
 
 		* rule set?
 		IF !ISNULL(m.Rule.ByHour)
 			* limit
 			IF m.Rule.Freq == "SECONDLY" OR m.Rule.Freq == "MINUTELY" OR m.Rule.Freq == "HOURLY"
 				IF ASCAN(This.ByHour, HOUR(m.RefDate)) != 0
-					IF This.ApplyByMinute(m.Rule, m.Start, m.RefDate, m.Dates)
-						m.Accepted = .T.
-					ENDIF
+					This.ApplyByMinute(m.Rule, m.Start, m.RefDate, m.Dates)
 				ENDIF
 			ELSE
 			* expand
 				FOR m.Entry = 1 TO ALEN(This.ByHour)
 					m.CalcDate = This.GetStartBasedDate(m.Start, m.RefDate, This.ByHour(m.Entry), "RRRVSS")
-					IF This.ApplyByMinute(m.Rule, m.Start, m.CalcDate, m.Dates)
-						m.Accepted = .T.
-					ENDIF
+					This.ApplyByMinute(m.Rule, m.Start, m.CalcDate, m.Dates)
 				ENDFOR
 			ENDIF
 		ELSE
 			* rule not set? pass to next rule
-			m.Accepted = This.ApplyByMinute(m.Rule, m.Start, m.RefDate, m.Dates)
+			This.ApplyByMinute(m.Rule, m.Start, m.RefDate, m.Dates)
 		ENDIF
-
-		RETURN m.Accepted
 
 	ENDFUNC
 
-	HIDDEN FUNCTION ApplyByMinute (Rule AS iCalTypeRECUR, Start AS Datetime, RefDate AS Datetime, Dates AS Collection) AS Logical
+	HIDDEN FUNCTION ApplyByMinute (Rule AS iCalTypeRECUR, Start AS Datetime, RefDate AS Datetime, Dates AS Collection)
 
 		LOCAL CalcDate AS Datetime
 		LOCAL Entry AS Integer
-		LOCAL Accepted AS Logical
-
-		m.Accepted = .F.
 
 		* rule set?
 		IF !ISNULL(m.Rule.ByMinute)
 			* limit
 			IF m.Rule.Freq == "SECONDLY" OR m.Rule.Freq == "MINUTELY"
 				IF ASCAN(This.ByMinute, MINUTE(m.RefDate)) != 0
-					IF This.ApplyBySecond(m.Rule, m.Start, m.RefDate, m.Dates)
-						m.Accepted = .T.
-					ENDIF
+					This.ApplyBySecond(m.Rule, m.Start, m.RefDate, m.Dates)
 				ENDIF
 			ELSE
 			* expand
 				FOR m.Entry = 1 TO ALEN(This.ByMinute)
 					m.CalcDate = This.GetStartBasedDate(m.Start, m.RefDate, This.ByMinute(m.Entry), "RRRRVS")
-					IF This.ApplyBySecond(m.Rule, m.Start, m.CalcDate, m.Dates)
-						m.Accepted = .T.
-					ENDIF
+					This.ApplyBySecond(m.Rule, m.Start, m.CalcDate, m.Dates)
 				ENDFOR
 			ENDIF
 		ELSE
 			* rule not set? pass to next rule
-			m.Accepted = This.ApplyBySecond(m.Rule, m.Start, m.RefDate, m.Dates)
+			This.ApplyBySecond(m.Rule, m.Start, m.RefDate, m.Dates)
 		ENDIF
-
-		RETURN m.Accepted
 
 	ENDFUNC
 
-	HIDDEN FUNCTION ApplyBySecond (Rule AS iCalTypeRECUR, Start AS Datetime, RefDate AS Datetime, Dates AS Collection) AS Logical
+	HIDDEN FUNCTION ApplyBySecond (Rule AS iCalTypeRECUR, Start AS Datetime, RefDate AS Datetime, Dates AS Collection)
 
 		LOCAL CalcDate AS Datetime
 		LOCAL Entry AS Integer
-		LOCAL Accepted AS Logical
-
-		m.Accepted = .T.
 
 		* rule set?
 		IF !ISNULL(m.Rule.BySecond)
@@ -1241,8 +1163,6 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 			IF m.Rule.Freq == "SECONDLY"
 				IF ASCAN(This.BySecond, SEC(m.RefDate)) != 0
 					This.AddDate(m.Dates, m.RefDate)
-				ELSE
-					m.Accepted = .F.
 				ENDIF
 			ELSE
 			* expand
@@ -1254,8 +1174,6 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 		ELSE
 			This.AddDate(m.Dates, m.RefDate)
 		ENDIF
-
-		RETURN m.Accepted
 
 	ENDFUNC
 
@@ -1293,8 +1211,12 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 
 	HIDDEN FUNCTION AddDate (Dates AS Collection, NewDate AS Datetime)
 
-		IF m.Dates.GetKey(TTOC(m.NewDate, 1)) == 0
-			m.Dates.Add(m.NewDate, TTOC(m.NewDate, 1))
+		LOCAL DateKey AS String
+
+		m.DateKey = TTOC(m.NewDate, 1)
+
+		IF m.Dates.GetKey(m.DateKey) == 0
+			m.Dates.Add(m.NewDate, m.DateKey)
 		ENDIF
 
 	ENDFUNC
