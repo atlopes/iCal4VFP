@@ -21,7 +21,8 @@ ENDIF
 
 * constants to support the Recurrence Rule processor
 
-#DEFINE ICAL_ETERNITY		5000
+#DEFINE ICAL_ETERNITY		9999
+#DEFINE ICAL_MAXCOUNT		5000
 
 #DEFINE MINUTE_IN_SECONDS	60
 #DEFINE HOUR_IN_SECONDS		3600
@@ -373,12 +374,17 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 	* Calculate all events determined by a recurrent rule (return a cursor name)
 	FUNCTION CalculateAll (Start AS Datetime, Finish AS Datetime, TZ AS iCalCompTIMEZONE, AddDates AS iCalPropRDATE, Exceptions AS iCalPropEXDATE) AS String
 
-		IF PCOUNT() = 2
-			m.TZ = .NULL.
-		ENDIF
-		
 		IF PCOUNT() < 4
 			STORE .NULL. TO m.AddDates, m.Exceptions
+			IF PCOUNT() < 3
+				m.TZ = .NULL.
+				IF PCOUNT() < 2
+					m.Finish = {^9999-12-31T23:59:59}
+					IF PCOUNT() == 0
+						m.Start = .NULL.
+					ENDIF
+				ENDIF
+			ENDIF
 		ENDIF
 
 		RETURN This.Calculator(m.Start, m.Finish, m.TZ, m.AddDates, m.Exceptions, .F.)
@@ -393,12 +399,17 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 		LOCAL CalcCursor AS String
 		LOCAL ARRAY PreviousDate(1)
 
-		IF PCOUNT() = 2
-			m.TZ = .NULL.
-		ENDIF
-		
 		IF PCOUNT() < 4
 			STORE .NULL. TO m.AddDates, m.Exceptions
+			IF PCOUNT() < 3
+				m.TZ = .NULL.
+				IF PCOUNT() < 2
+					m.Finish = DATETIME()
+					IF PCOUNT() == 0
+						m.Start = .NULL.
+					ENDIF
+				ENDIF
+			ENDIF
 		ENDIF
 
 		IF !ISNULL(m.TZ)
@@ -442,12 +453,17 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 		LOCAL CalcCursor AS String
 		LOCAL ARRAY LimitDates[1]
 
-		IF PCOUNT() = 2
-			m.TZ = .NULL.
-		ENDIF
-		
 		IF PCOUNT() < 4
 			STORE .NULL. TO m.AddDates, m.Exceptions
+			IF PCOUNT() < 3
+				m.TZ = .NULL.
+				IF PCOUNT() < 2
+					m.Finish = DATETIME()
+					IF PCOUNT() == 0
+						m.Start = .NULL.
+					ENDIF
+				ENDIF
+			ENDIF
 		ENDIF
 
 		IF !ISNULL(m.TZ)
@@ -496,13 +512,18 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 
 		LOCAL CalcCursor AS String
 		LOCAL ARRAY NextDate[1]
-
-		IF PCOUNT() = 2
-			m.TZ = .NULL.
-		ENDIF
 		
 		IF PCOUNT() < 4
 			STORE .NULL. TO m.AddDates, m.Exceptions
+			IF PCOUNT() < 3
+				m.TZ = .NULL.
+				IF PCOUNT() < 2
+					m.Finish = DATETIME()
+					IF PCOUNT() == 0
+						m.Start = .NULL.
+					ENDIF
+				ENDIF
+			ENDIF
 		ENDIF
 
 		IF !ISNULL(m.TZ)
@@ -625,14 +646,14 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 
 		* how is the date related to Timezones
 		* for the time part interval: check on saving time changes affecting the interval
-		m.STUsage = .F.
 		IF !ISNULL(m.TZ)
 			m.NextSavingTime = m.TZ.NextSavingTimeChange(m.Current)
 			m.TzName = m.TZ.TzName
-			m.STUsage = m.Rule.Freq == "HOURLY" OR m.Rule.Freq == "MINUTELY" OR m.Rule.Freq == "SECONDELY"
+			m.STUsage = m.Rule.Freq == "HOURLY" OR m.Rule.Freq == "MINUTELY" OR m.Rule.Freq == "SECONDLY"
 		ELSE
 			m.NextSavingTime = .NULL.
 			m.TzName = .NULL.
+			m.STUsage = .F.
 		ENDIF
 
 		m.DatetimePart = m.Current
@@ -650,7 +671,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 
 		* while we didn't reach the finish date, or the count of dates, or the final date in the RRULE
 		DO WHILE (m.Current <= m.Finish OR (m.CalcNext AND m.NextInterval)) ;
-				AND m.ReCount <= NVL(m.Rule.Count, ICAL_ETERNITY) ;
+				AND m.ReCount <= NVL(m.Rule.Count, ICAL_MAXCOUNT) ;
 				AND (ISNULL(m.Until) OR m.Current <= m.Until)
 
 			* a given start date will always be part of the date series
