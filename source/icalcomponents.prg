@@ -191,7 +191,7 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 	* return the UTC offset (in seconds) for a given time
 	FUNCTION UTCOffset (RefDate AS Datetime) AS Integer
 
-		ASSERT VARTYPE(m.RefDate) == "T"
+		ASSERT VARTYPE(m.RefDate) $ "DT"
 
 		RETURN m.RefDate - This.ToUTC(m.RefDate)
 
@@ -200,7 +200,7 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 	* take a local time, and make it UTC
 	FUNCTION ToUTC (LocalTime AS Datetime)
 
-		ASSERT VARTYPE(m.LocalTime) == "T"
+		ASSERT VARTYPE(m.LocalTime) $ "DT"
 
 		RETURN This._UTC(m.LocalTime, .T.)
 
@@ -209,7 +209,7 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 	* take a UTC time, and make it local
 	FUNCTION ToLocalTime (UTCTime AS Datetime)
 
-		ASSERT VARTYPE(m.UTCTime) == "T"
+		ASSERT VARTYPE(m.UTCTime) $ "DT"
 
 		RETURN This._UTC(m.UTCTime, .F.)
 
@@ -219,10 +219,10 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 
 		SAFETHIS
 
-		LOCAL OffsetTo AS Number
+		LOCAL OffsetTo AS Number, OffsetFrom AS Number
 		LOCAL ClosestOffsetTo AS Number
 		LOCAL ClosestDate AS Datetime
-		LOCAL RefDate AS Datetime
+		LOCAL RefDate AS Datetime, RefLocalTime AS Datetime
 		LOCAL UntilDate AS Datetime
 		LOCAL TzComp AS _iCalComponent
 		LOCAL CompIndex AS Integer
@@ -238,8 +238,8 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 
 		* the source time fits in the ST period set in a previous calculation?
 		IF !ISNULL(This.StartST) AND !ISNULL(This.EndST) ;
-				AND ((!m.ToUTC AND m.RefTime >= This.StartST AND m.RefTime < This.EndST) OR ;
-					(m.ToUTC AND m.RefTime + This.BiasST * 60 >= This.StartST AND m.RefTime + This.BiasST * 60 < This.EndST))
+				AND ((m.ToUTC AND m.RefTime >= This.StartST AND m.RefTime < This.EndST) OR ;
+					(!m.ToUTC AND m.RefTime + This.BiasST * 60 >= This.StartST AND m.RefTime + This.BiasST * 60 < This.EndST))
 
 			* use the stored bias, no need to go through the calculation, again
 			m.ClosestOffsetTo = This.BiasST
@@ -255,12 +255,25 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 			* mark if there is a DST definition for the reference date
 			m.DST = This.DST(m.RefTime, !m.ToUTC)
 
+			IF m.ToUTC
+				m.RefLocalTime = m.RefTime
+			ENDIF
+
 			FOR m.CompIndex = 1 TO This.GetICComponentsCount()
 
 				m.TzComp = This.GetICComponent(m.CompIndex)
 
 				* look for all STANDARD, and also DAYLIGHT (if the reference date is covered by DST)
 				IF m.TzComp.ICName == "STANDARD" OR (m.DST AND m.TzComp.ICName == "DAYLIGHT")
+
+					* offset to UTC
+					m.OffsetTo = m.TzComp.GetICPropertyValue("TZOFFSETTO")
+
+					* get the local time to test against time in the timezone definition
+					IF ! m.ToUTC
+						m.OffsetFrom = NVL(m.TzComp.GetICPropertyValue("TZOFFSETFROM"), 0)
+						m.RefLocalTime = m.RefTime + m.OffsetFrom * 60
+					ENDIF
 
 					* get the date when this tz definition went in effect
 					m.RefDate = m.TzComp.GetICPropertyValue("DTSTART")
@@ -273,8 +286,8 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 						* if it has already passed, no need to check for it (it expired)
 						m.UntilDate = m.VRule.Until
 						* but if it didn't calculate the previous and next ST enforcement
-						IF ISNULL(m.UntilDate) OR YEAR(m.UntilDate) >= YEAR(m.RefTime)
-							m.RRule.CalculatePeriod(m.RefDate, m.RefTime, .NULL., m.TzComp.GetICProperty("RDATE", -1), m.TzComp.GetICProperty("EXDATE", -1))
+						IF ISNULL(m.UntilDate) OR YEAR(m.UntilDate) >= YEAR(m.RefLocalTime)
+							m.RRule.CalculatePeriod(m.RefDate, m.RefLocalTime, .NULL., m.TzComp.GetICProperty("RDATE", -1), m.TzComp.GetICProperty("EXDATE", -1))
 							IF !ISNULL(m.RRule.PreviousDate)
 								m.RefDate = m.RRule.PreviousDate
 								m.Period = .T.
@@ -286,13 +299,13 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 						ENDIF
 					* no RRULE? look for RDATEs
 					ELSE
-						m.RefDate = This.GetClosestRDATE(m.RefTime, m.RefDate, m.TzComp.GetICProperty("RDATE", -1))
+						m.RefDate = This.GetClosestRDATE(m.RefLocalTime, m.RefDate, m.TzComp.GetICProperty("RDATE", -1))
 					ENDIF
 
 					* we have a date, and it covers our time, and it's the closest to our time that we found so far?
 					IF !ISNULL(m.RefDate) AND !EMPTY(m.RefDate) AND m.RefDate > m.ClosestDate
-						m.OffsetTo = m.TzComp.GetICPropertyValue("TZOFFSETTO")
-						IF m.RefDate <= m.RefTime + IIF(m.ToUTC, m.OffsetTo * 60, 0)
+
+						IF m.RefDate <= m.RefLocalTime
 							m.ClosestDate = m.RefDate
 							m.ClosestOffsetTo = m.OffsetTo
 							This.TzName = NVL(m.TzComp.GetICPropertyValue("TZNAME"), "")
@@ -313,6 +326,8 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 						* if the next occurence is before our current ST ending date, then move our ST ending period to that point
 						IF ISNULL(This.EndST) OR (m.RRule.NextDate > This.StartST AND m.RRule.NextDate < This.EndST)
 							This.EndST = m.RRule.NextDate
+						ELSE
+							This.EndST = .NULL.
 						ENDIF
 					ENDIF
 				ENDIF
@@ -323,7 +338,7 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
  		* we have a local time and want the UTC? subtract the bias
  		IF m.ToUTC	
  			m.CalcTime = m.RefTime - m.ClosestOffsetTo * 60
- 		* we have a UTC and want the local time? add the bias
+ 		* we have an UTC and want the local time? add the bias
  		ELSE
  			m.CalcTime = m.RefTime + m.ClosestOffsetTo * 60
  		ENDIF

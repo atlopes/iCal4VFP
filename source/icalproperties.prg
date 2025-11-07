@@ -483,11 +483,13 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 			ORDER BY 1 ;
 			INTO ARRAY LimitDates
 
-			IF _Tally == 2
+			IF ALEN(m.LimitDates) >= 2
 				This.PreviousDate = m.LimitDates[1, 1]
 				This.PreviousTzName = NVL(m.LimitDates[1, 2], "")
-				This.NextDate = m.LimitDates[2, 1]
-				This.NextTzName = NVL(m.LimitDates[2, 2], "")
+				IF ALEN(m.LimitDates) > 2
+					This.NextDate = m.LimitDates[2, 1]
+					This.NextTzName = NVL(m.LimitDates[2, 2], "")
+				ENDIF
 			ENDIF
 
 			USE IN (m.CalcCursor)
