@@ -86,7 +86,7 @@ In iCalendar, components are container objects that integrate properties and, ev
 | ------------ | ------------ | ------------ |
 | GetTimezone  | O | Returns the VTIMEZONE object that corresponds to a TZID |
 
-#### Methods ( iCalCompVTIMEZONE)
+#### Methods (iCalCompVTIMEZONE)
 
 | Name  | Type  | Obs |
 | ------------ | ------------ | ------------ |
@@ -95,6 +95,13 @@ In iCalendar, components are container objects that integrate properties and, ev
 | ToLocalTime | T | Returns the local time corresponding to a given UTC time |
 | ToUTC | T | Returns the UTC time corresponding to a given local time |
 | UTCOffset | N | Returns the UTC offset (in seconds) for a given date |
+
+#### Properties (iCalCompVTIMEZONE)
+
+| Name  | Type  | Obs |
+| ------------ | ------------ | ------------ |
+| AmbiguityResolution | N | Defines regular resolution of ambiguous dates: 1, for first pass; 2, for second pass. May be overriden by additional parameters to the `ToUTC` and `UTCOffset` methods. |
+| Ambiguous | L | True when a local time results in two different UTC times, because it occurs during an offset adjustment of the time zone that retrocedes. The value of the property is set by the `ToUTC` and `UTCOffset` methods. |
 
 ### Properties classes
 

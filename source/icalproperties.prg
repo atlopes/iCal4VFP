@@ -479,7 +479,7 @@ DEFINE CLASS iCalPropRRULE AS _iCalProperty
 
 			SELECT LocalTime, TzName FROM (m.CalcCursor) WHERE LocalTime = (SELECT MAX(LocalTime) FROM (m.CalcCursor) WHERE LocalTime <= m.Finish) ;
 			UNION ALL ;
-			SELECT LocalTime, TzName FROM (m.CalcCursor) WHERE LocalTime = (SELECT MIN(LocalTime) FROM (m.CalcCursor) WHERE LocalTime > m.Finish) ;
+			SELECT LocalTime, TzName FROM (m.CalcCursor) WHERE LocalTime = (SELECT MIN(LocalTime) FROM (m.CalcCursor) WHERE LocalTime >= m.Finish) ;
 			ORDER BY 1 ;
 			INTO ARRAY LimitDates
 

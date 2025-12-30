@@ -132,6 +132,8 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 
 	TzName = ""
 	TzEntry = 0
+	Ambiguous = .F.
+	AmbiguityResolution = 2
 
 	HIDDEN StartST, EndST, BiasST, _StartST(1), _EndST(1), _BiasST(1), _TzName(1), _TzEntry(1), StackST
 	StartST = .NULL.
@@ -146,6 +148,8 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 	StackST = 0
 
 	_MemberData =	'<VFPData>' + ;
+							'<memberdata name="ambiguityresolution" type="property" display="AmbiguityResolution"/>' + ;
+							'<memberdata name="ambiguous" type="property" display="Ambiguous"/>' + ;
 							'<memberdata name="tzname" type="property" display="TzName"/>' + ;
 							'<memberdata name="dst" type="method" display="DST"/>' + ;
 							'<memberdata name="nextsavingtimechange" type="method" display="NextSavingTimeChange"/>' + ;
@@ -155,6 +159,10 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 							'<memberdata name="toutc" type="method" display="ToUTC"/>' + ;
 							'<memberdata name="utcoffset" type="method" display="UTCOffset"/>' + ;
 					'</VFPData>'
+
+	PROCEDURE AmbiguityResolution_assign (ARValue AS Integer)
+		This.AmbiguityResolution = IIF(VARTYPE(m.ARValue) != "N" OR m.ARValue != 1, 2, 1)
+	ENDPROC
 
 	* save or restore saving time current settings
 	FUNCTION PushSavingTime ()
@@ -189,20 +197,20 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 	ENDFUNC
 
 	* return the UTC offset (in seconds) for a given time
-	FUNCTION UTCOffset (RefDate AS Datetime) AS Integer
+	FUNCTION UTCOffset (RefDate AS Datetime, AmbiguityResolution AS Integer) AS Integer
 
-		ASSERT VARTYPE(m.RefDate) $ "DT"
+		ASSERT VARTYPE(m.RefDate) $ "DT" AND (PCOUNT() == 1 OR VARTYPE(m.AmbiguityResolution) == "N")
 
-		RETURN m.RefDate - This.ToUTC(m.RefDate)
+		RETURN m.RefDate - IIF(PCOUNT() == 1, This.ToUTC(m.RefDate), This.ToUTC(m.RefDate, m.AmbiguityResolution))
 
 	ENDFUNC
 	
 	* take a local time, and make it UTC
-	FUNCTION ToUTC (LocalTime AS Datetime)
+	FUNCTION ToUTC (LocalTime AS Datetime, AmbiguityResolution AS Integer)
 
-		ASSERT VARTYPE(m.LocalTime) $ "DT"
+		ASSERT VARTYPE(m.LocalTime) $ "DT" AND (PCOUNT() == 1 OR VARTYPE(m.AmbiguityResolution) == "N")
 
-		RETURN This._UTC(m.LocalTime, .T.)
+		RETURN IIF(PCOUNT() == 1, This._UTC(m.LocalTime, .T.), This._UTC(m.LocalTime, .T., m.AmbiguityResolution))
 
 	ENDFUNC
 
@@ -215,29 +223,37 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 
 	ENDFUNC
 
-	HIDDEN FUNCTION _UTC (RefTime AS Datetime, ToUTC AS Logical)
+	HIDDEN FUNCTION _UTC (RefTime AS Datetime, ToUTC AS Logical, AmbiguityResolution AS Integer)
 
 		SAFETHIS
 
-		LOCAL OffsetTo AS Number, OffsetFrom AS Number
-		LOCAL ClosestOffsetTo AS Number
+		LOCAL OffsetTo AS Number, OffsetFrom AS Number, OffsetChange AS Number
+		LOCAL ClosestOffsetTo AS Number, ClosestOffsetFrom AS Number
 		LOCAL ClosestDate AS Datetime
 		LOCAL RefDate AS Datetime, RefLocalTime AS Datetime
-		LOCAL UntilDate AS Datetime
+		LOCAL UntilDate AS Datetime, NextChange AS Datetime, ChangeTime AS Datetime
 		LOCAL TzComp AS _iCalComponent
 		LOCAL CompIndex AS Integer
 		LOCAL RRule AS iCalPropRRULE
 		LOCAL VRule AS iCalTypeRECUR
 		LOCAL Period AS Logical
-		LOCAL DST AS Logical 
+		LOCAL DST AS Logical
+		LOCAL IsDST AS Logical
 
 		* make sure we are working with datetimes
 		IF VARTYPE(m.RefTime) == "D"
 			RETURN DTOT(m.RefTime)
 		ENDIF
 
+		IF m.ToUTC
+			m.RefLocalTime = m.RefTime
+		ENDIF
+		m.IsDST = IIF(PCOUNT() == 2, This.AmbiguityResolution, m.AmbiguityResolution) == 1
+
+		m.NextChange = {/:}
+
 		* the source time fits in the ST period set in a previous calculation?
-		IF !ISNULL(This.StartST) AND !ISNULL(This.EndST) ;
+		IF !This.Ambiguous AND !ISNULL(This.StartST) AND !ISNULL(This.EndST) ;
 				AND ((m.ToUTC AND m.RefTime >= This.StartST AND m.RefTime < This.EndST) OR ;
 					(!m.ToUTC AND m.RefTime + This.BiasST * 60 >= This.StartST AND m.RefTime + This.BiasST * 60 < This.EndST))
 
@@ -245,6 +261,8 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 			m.ClosestOffsetTo = This.BiasST
 
 		ELSE
+
+			This.Ambiguous = .F.
 
 			* calculate the offset to UTC
 			STORE 0 TO m.ClosestOffsetTo, m.OffsetTo
@@ -255,10 +273,6 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 			* mark if there is a DST definition for the reference date
 			m.DST = This.DST(m.RefTime, !m.ToUTC)
 
-			IF m.ToUTC
-				m.RefLocalTime = m.RefTime
-			ENDIF
-
 			FOR m.CompIndex = 1 TO This.GetICComponentsCount()
 
 				m.TzComp = This.GetICComponent(m.CompIndex)
@@ -267,11 +281,11 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 				IF m.TzComp.ICName == "STANDARD" OR (m.DST AND m.TzComp.ICName == "DAYLIGHT")
 
 					* offset to UTC
-					m.OffsetTo = m.TzComp.GetICPropertyValue("TZOFFSETTO")
+					m.OffsetTo = NVL(m.TzComp.GetICPropertyValue("TZOFFSETTO"), 0)
+					m.OffsetFrom = NVL(m.TzComp.GetICPropertyValue("TZOFFSETFROM"), 0)
 
 					* get the local time to test against time in the timezone definition
 					IF ! m.ToUTC
-						m.OffsetFrom = NVL(m.TzComp.GetICPropertyValue("TZOFFSETFROM"), 0)
 						m.RefLocalTime = m.RefTime + m.OffsetFrom * 60
 					ENDIF
 
@@ -290,6 +304,13 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 							m.RRule.CalculatePeriod(m.RefDate, m.RefLocalTime, .NULL., m.TzComp.GetICProperty("RDATE", -1), m.TzComp.GetICProperty("EXDATE", -1))
 							IF !ISNULL(m.RRule.PreviousDate)
 								m.RefDate = m.RRule.PreviousDate
+								* check when next change on UTC offsset will occur
+								IF ! ISNULL(m.RRule.NextDate)
+									IF EMPTY(m.NextChange) OR m.NextChange > m.RRule.NextDate
+										m.NextChange = m.RRule.NextDate
+										m.OffsetChange = m.OffsetFrom - m.OffsetTo
+									ENDIF
+								ENDIF
 								m.Period = .T.
 							ELSE
 								m.RefDate = .NULL.	&& this shouldn't happen... but something may be wrong with the rule, or the processor...
@@ -308,6 +329,7 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 						IF m.RefDate <= m.RefLocalTime
 							m.ClosestDate = m.RefDate
 							m.ClosestOffsetTo = m.OffsetTo
+							m.ClosestOffsetFrom = m.OffsetFrom
 							This.TzName = NVL(m.TzComp.GetICPropertyValue("TZNAME"), "")
 							* store the results of our calculation for the next calls
 							IF m.Period
@@ -336,12 +358,39 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 		ENDIF
  
  		* we have a local time and want the UTC? subtract the bias
- 		IF m.ToUTC	
- 			m.CalcTime = m.RefTime - m.ClosestOffsetTo * 60
- 		* we have an UTC and want the local time? add the bias
- 		ELSE
- 			m.CalcTime = m.RefTime + m.ClosestOffsetTo * 60
- 		ENDIF
+		IF m.ToUTC
+			* check if it is an ambiguous time that occurs when UTC offset moves back
+			IF ! EMPTY(m.NextChange)
+				m.ChangeTime = m.NextChange
+				m.NextChange = m.NextChange - m.OffsetChange * 60
+				IF m.NextChange <= m.RefLocalTime
+	 				This.Ambiguous = .T.
+	 			ENDIF
+			ENDIF
+			DO CASE
+			CASE ! This.Ambiguous
+				m.CalcTime = m.RefLocalTime - m.ClosestOffsetTo * 60
+			CASE m.RefLocalTime == m.NextChange
+				IF m.IsDST
+					m.CalcTime = m.RefLocalTime - m.ClosestOffsetTo * 60
+				ELSE
+					m.CalcTime = m.RefLocalTime - m.ClosestOffsetFrom * 60
+				ENDIF
+			CASE m.RefLocalTime == m.ChangeTime
+				IF m.IsDST
+					m.CalcTime = m.RefLocalTime - m.ClosestOffsetFrom * 60
+				ELSE
+					m.CalcTime = m.RefLocalTime - m.ClosestOffsetTo * 60
+				ENDIF
+			CASE m.IsDST
+				m.CalcTime = m.RefLocalTime - m.ClosestOffsetTo * 60
+			OTHERWISE
+	 			m.CalcTime = m.RefLocalTime - m.ClosestOffsetFrom * 60
+	 		ENDCASE
+		* we have an UTC and want the local time? add the bias
+		ELSE
+			m.CalcTime = m.RefTime + m.ClosestOffsetTo * 60
+		ENDIF
 
 		* done
  		RETURN m.CalcTime
