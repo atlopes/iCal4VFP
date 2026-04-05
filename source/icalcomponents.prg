@@ -134,6 +134,8 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 	TzEntry = 0
 	Ambiguous = .F.
 	AmbiguityResolution = 2
+	Optimization = .T.
+	Optimized = .F.
 
 	HIDDEN StartST, EndST, BiasST, _StartST(1), _EndST(1), _BiasST(1), _TzName(1), _TzEntry(1), StackST
 	StartST = .NULL.
@@ -150,6 +152,8 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 	_MemberData =	'<VFPData>' + ;
 							'<memberdata name="ambiguityresolution" type="property" display="AmbiguityResolution"/>' + ;
 							'<memberdata name="ambiguous" type="property" display="Ambiguous"/>' + ;
+							'<memberdata name="optimization" type="property" display="Optimization"/>' + ;
+							'<memberdata name="optimized" type="property" display="Optimized"/>' + ;
 							'<memberdata name="tzname" type="property" display="TzName"/>' + ;
 							'<memberdata name="dst" type="method" display="DST"/>' + ;
 							'<memberdata name="nextsavingtimechange" type="method" display="NextSavingTimeChange"/>' + ;
@@ -252,10 +256,24 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 
 		m.NextChange = {/:}
 
-		* the source time fits in the ST period set in a previous calculation?
-		IF !This.Ambiguous AND !ISNULL(This.StartST) AND !ISNULL(This.EndST) ;
-				AND ((m.ToUTC AND m.RefTime >= This.StartST AND m.RefTime < This.EndST) OR ;
-					(!m.ToUTC AND m.RefTime + This.BiasST * 60 >= This.StartST AND m.RefTime + This.BiasST * 60 < This.EndST))
+		This.Optimized = .F.
+
+		* the source time fits in the ST period or daylight saving period set in a previous unambiguous calculation?
+		IF This.Optimization
+			IF ! This.Ambiguous
+				IF m.ToUTC
+					IF ! ISNULL(This.StartST) AND ! ISNULL(This.EndST)
+						This.Optimized = BETWEEN(m.RefTime - This.BiasST * 60, This.StartST + This.BiasST * 60, This.EndST - This.BiasST * 60 - 1)
+					ENDIF
+				ELSE
+					IF ! ISNULL(This.StartST) AND ! ISNULL(This.EndST)
+						This.Optimized = BETWEEN(m.RefTime, This.StartST, This.EndST - 1)
+					ENDIF
+				ENDIF
+			ENDIF 
+		ENDIF
+		
+		IF This.Optimized
 
 			* use the stored bias, no need to go through the calculation, again
 			m.ClosestOffsetTo = This.BiasST
@@ -295,7 +313,7 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 					m.RRule = m.TzComp.GetICProperty("RRULE")
 					m.Period = .F.
 					IF !ISNULL(m.RRule)
-						m.VRule = m.RRule.Getvalue()
+						m.VRule = m.RRule.GetValue()
 						* a quick check on Until rule part
 						* if it has already passed, no need to check for it (it expired)
 						m.UntilDate = m.VRule.Until
@@ -348,8 +366,6 @@ DEFINE CLASS iCalCompVTIMEZONE AS _iCalComponent
 						* if the next occurence is before our current ST ending date, then move our ST ending period to that point
 						IF ISNULL(This.EndST) OR (m.RRule.NextDate > This.StartST AND m.RRule.NextDate < This.EndST)
 							This.EndST = m.RRule.NextDate
-						ELSE
-							This.EndST = .NULL.
 						ENDIF
 					ENDIF
 				ENDIF

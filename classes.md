@@ -102,6 +102,8 @@ In iCalendar, components are container objects that integrate properties and, ev
 | ------------ | ------------ | ------------ |
 | AmbiguityResolution | N | Defines regular resolution of ambiguous dates: 1, for first pass; 2, for second pass. May be overriden by additional parameters to the `ToUTC` and `UTCOffset` methods. |
 | Ambiguous | L | True when a local time results in two different UTC times, because it occurs during an offset adjustment of the time zone that retrocedes. The value of the property is set by the `ToUTC` and `UTCOffset` methods. |
+| Optimization | L | Do not recalculate the UTC offset for a date that falls within the same time period (standard time or daylight saving time) as the last calculation. | 
+| Optimized | L | True if the calculation of the UTC offset used the previous calculated offset. | 
 
 ### Properties classes
 
